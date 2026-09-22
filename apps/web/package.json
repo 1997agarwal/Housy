@@ -1,0 +1,32 @@
+{
+  "name": "@housy/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@housy/shared": "*",
+    "@supabase/supabase-js": "^2.49.1",
+    "@supabase/ssr": "^0.6.1",
+    "next": "15.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "lucide-react": "^0.511.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.3",
+    "tailwindcss": "^4.1.4",
+    "postcss": "^8.5.3",
+    "eslint": "^9.24.0",
+    "eslint-config-next": "15.3.1"
+  }
+}

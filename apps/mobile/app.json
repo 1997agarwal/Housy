@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Housy",
+    "slug": "housy",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "housy",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#E8673A"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.housy.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#E8673A"
+      },
+      "package": "com.housy.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        { "cameraPermission": "Allow Housy to use your camera to scan rooms for floor plan generation." }
+      ],
+      [
+        "expo-image-picker",
+        { "photosPermission": "Allow Housy to access your photos to upload site progress pictures." }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
