@@ -23,17 +23,26 @@
       },
       "package": "com.housy.app"
     },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
     "plugins": [
       "expo-router",
       "expo-secure-store",
       [
         "expo-camera",
-        { "cameraPermission": "Allow Housy to use your camera to scan rooms for floor plan generation." }
+        {
+          "cameraPermission": "Allow Housy to use your camera to scan rooms for floor plan generation."
+        }
       ],
       [
         "expo-image-picker",
-        { "photosPermission": "Allow Housy to access your photos to upload site progress pictures." }
-      ]
+        {
+          "photosPermission": "Allow Housy to access your photos to upload site progress pictures."
+        }
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
