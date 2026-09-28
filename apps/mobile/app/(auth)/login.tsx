@@ -89,6 +89,13 @@ export default function LoginScreen() {
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={styles.btnText}>Send OTP →</Text>}
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.demoBtn}
+              onPress={() => router.replace('/(tabs)/home')}
+            >
+              <Text style={styles.demoBtnText}>⚡ Quick Demo: Enter as Homeowner →</Text>
+            </TouchableOpacity>
           </>
         ) : (
           <>
@@ -142,4 +149,6 @@ const styles = StyleSheet.create({
   btnText:    { color: '#fff', fontSize: 16, fontWeight: '700' },
   backBtn:    { marginTop: 16, alignItems: 'center' },
   backText:   { color: COLORS.primary, fontSize: 14 },
+  demoBtn:    { marginTop: 16, paddingVertical: 14, backgroundColor: '#FFF0EB', borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#FFD5C2' },
+  demoBtnText:{ color: COLORS.primary, fontWeight: '700', fontSize: 14 },
 });
