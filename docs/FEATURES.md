@@ -42,6 +42,7 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | **Photo proof required to submit a milestone**, crew note, owner reviews before paying | ✅ | Images resized in browser, validated by magic bytes, private, 2 MB, 6 per milestone; stored on local disk |
 | Design/work review loop: owner can **request changes** (max 3 rounds); fix needs a *fresh* photo; design must be approved before execution phases unlock | ✅ | Designer renders carry captions |
 | **Problems & support**: owner reports quality / stoppage / material / design / payment issues (optionally tied to a step), threads with Housy, marks resolved or reopens; unresolved > 48 h auto-escalate; ops queue in `/admin` (reply/resolve) | ✅ | Max 5 open per project. No push notification when Housy replies (owner must open the page) |
+| **Change orders**: the "fixed price" promise made real — owner requests extra work, expert prices it, owner approves → new milestone + quote total rise together; a pending change holds the project open | ✅ | Expert pricing is a demo control |
 | Ownership isolation (other users get 404) | ✅ | |
 | Crew directory per city, filter by trade, real ratings + recent reviews | ✅ | |
 | **Verified reviews**: owner of a *completed* project rates each person who worked on it (4 criteria, 1–5, optional text), once each; reviewer shown masked ("Asha K."); real ratings blend into the seed baseline | ✅ | Crew *assignment* still ranks on the seed rating, not live reviews |

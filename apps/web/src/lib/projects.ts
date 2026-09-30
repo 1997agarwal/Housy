@@ -2,9 +2,10 @@ import { readJson, withJson } from './kv';
 import { normalizePhone } from './phone';
 import { estimate, getType, STYLES, type Estimate, type Tier } from './catalog';
 import { proForTrade, visitExpert, type Pro } from './pros';
+import type { Trade } from './catalog';
 import { getCity } from './cities';
 import { saveImage, type ImageExt } from './uploads';
-import { MAX_PHOTOS_PER_MILESTONE, MAX_REVISIONS } from './limits';
+import { CHANGE_TRADES, MAX_PENDING_CHANGES, MAX_PHOTOS_PER_MILESTONE, MAX_REVISIONS } from './limits';
 
 // ── Types ────────────────────────────────────────────────────────────
 export type ProjectStatus = 'visit_scheduled' | 'quote_ready' | 'active' | 'completed' | 'cancelled';
@@ -19,6 +20,12 @@ export interface Milestone {
   feedbackAt?: string;       // photos must be newer than this to count as proof of the fix
 }
 export { MAX_REVISIONS };
+export { CHANGE_TRADES, MAX_PENDING_CHANGES };
+export type ChangeStatus = 'requested' | 'quoted' | 'approved' | 'declined';
+export interface ChangeOrder {
+  id: string; title: string; description: string; trade: Trade; status: ChangeStatus;
+  amount?: number; days?: number; createdAt: string; updatedAt: string;
+}
 export interface Photo { id: string; milestoneId: string; ext: ImageExt; caption?: string; at: string }
 export { MAX_PHOTOS_PER_MILESTONE };
 export interface Project {
@@ -33,6 +40,7 @@ export interface Project {
   initialTotal?: number;     // estimate total at booking, kept when the expert's measurements re-price it
   cancelReason?: string;
   photos?: Photo[];
+  changes?: ChangeOrder[];   // scope changes agreed in writing; approved ones become milestones and raise the quote
   timeline: { at: string; text: string }[];
 }
 
@@ -125,9 +133,21 @@ export type Action =
   | { action: 'accept_quote' }
   | { action: 'start' | 'approve'; milestoneId: string }
   | { action: 'submit'; milestoneId: string; note?: string }
-  | { action: 'request_changes'; milestoneId: string; feedback: string };
+  | { action: 'request_changes'; milestoneId: string; feedback: string }
+  | { action: 'request_change'; title: string; description: string; trade: string }
+  | { action: 'price_change'; changeId: string; amount: number; days?: number }
+  | { action: 'approve_change'; changeId: string }
+  | { action: 'decline_change'; changeId: string };
 
 export class ConflictError extends Error {}
+
+const pendingChanges = (p: Project) => (p.changes ?? []).filter((c) => c.status === 'requested' || c.status === 'quoted');
+// A project is complete only when every milestone is paid and no scope change is still waiting for a decision.
+function completeIfDone(p: Project, log: (t: string) => void) {
+  if (p.status === 'active' && p.milestones.length > 0 && p.milestones.every((x) => x.status === 'paid') && pendingChanges(p).length === 0) {
+    p.status = 'completed'; log('Project completed 🎉');
+  }
+}
 
 export function act(id: string, a: Action, owner: string) {
   return tx((all) => {
@@ -194,9 +214,44 @@ export function act(id: string, a: Action, owner: string) {
       });
       q.accepted = true; p.status = 'active'; p.paid = q.advance;
       log(`Quote accepted — advance of ₹${q.advance.toLocaleString('en-IN')} paid`);
+    } else if (a.action === 'request_change') {
+      if (p.status !== 'active') throw new ConflictError('Scope changes can be requested while work is in progress');
+      const title = String(a.title ?? '').trim(), description = String(a.description ?? '').trim();
+      if (title.length < 3 || title.length > 80) throw new ValidationError('Give the change a short title (3–80 characters)');
+      if (description.length < 10) throw new ValidationError('Describe the change in at least 10 characters');
+      if (!(CHANGE_TRADES as readonly string[]).includes(a.trade)) throw new ValidationError('Choose who should do the extra work');
+      if (pendingChanges(p).length >= MAX_PENDING_CHANGES) throw new ConflictError(`Please decide on your ${MAX_PENDING_CHANGES} pending changes first`);
+      proForTrade(p.city, a.trade as Trade);   // fail early if this city has nobody for the trade
+      (p.changes ??= []).push({ id: `${p.id}-C${p.changes.length + 1}`, title, description: description.slice(0, 500), trade: a.trade as Trade, status: 'requested', createdAt: now(), updatedAt: now() });
+      log(`You requested a change: ${title}`);
+    } else if (a.action === 'price_change') {
+      const c = p.changes?.find((x) => x.id === a.changeId);
+      if (!c) throw new ValidationError('Change not found');
+      if (c.status !== 'requested') throw new ConflictError('This change has already been priced');
+      const amount = Number(a.amount), days = a.days === undefined ? 1 : Number(a.days);
+      if (!(amount >= 500 && amount <= (p.quote?.total ?? 0))) throw new ValidationError('Price looks wrong');
+      if (!(days >= 0 && days <= 90)) throw new ValidationError('Days looks wrong');
+      c.amount = Math.round(amount / 50) * 50; c.days = Math.round(days); c.status = 'quoted'; c.updatedAt = now();
+      log(`${proForTrade(p.city, c.trade).name} priced "${c.title}" at ₹${c.amount.toLocaleString('en-IN')}`);
+    } else if (a.action === 'approve_change' || a.action === 'decline_change') {
+      if (p.status !== 'active') throw new ConflictError('Project is not active');
+      const c = p.changes?.find((x) => x.id === a.changeId);
+      if (!c) throw new ValidationError('Change not found');
+      if (a.action === 'approve_change') {
+        if (c.status !== 'quoted') throw new ConflictError('There is no price to approve yet');
+        p.milestones.push({ id: `${p.id}-M${p.milestones.length + 1}`, phaseId: `change-${c.id}`, name: `Change: ${c.title}`, days: c.days ?? 1, amount: c.amount!, status: 'upcoming', pro: proForTrade(p.city, c.trade) });
+        p.quote!.total += c.amount!;
+        c.status = 'approved'; log(`You approved the change "${c.title}" (+₹${c.amount!.toLocaleString('en-IN')}) — new total ₹${p.quote!.total.toLocaleString('en-IN')}`);
+      } else {
+        if (c.status !== 'requested' && c.status !== 'quoted') throw new ConflictError('This change is already decided');
+        c.status = 'declined'; log(`You declined the change "${c.title}"`);
+        completeIfDone(p, log);   // it may have been the last thing holding the project open
+      }
+      c.updatedAt = now();
     } else {
       if (p.status !== 'active') throw new ConflictError('Project is not active');
-      const idx = p.milestones.findIndex((m) => m.id === a.milestoneId);
+      const milestoneId = a.milestoneId;   // read before the callback: TS drops the narrowing inside closures
+      const idx = p.milestones.findIndex((m) => m.id === milestoneId);
       if (idx < 0) throw new ValidationError('Milestone not found');
       const m = p.milestones[idx];
       if (a.action === 'start') {
@@ -224,7 +279,7 @@ export function act(id: string, a: Action, owner: string) {
       } else {
         if (m.status !== 'in_review') throw new ConflictError('Nothing to approve yet');
         m.status = 'paid'; p.paid += m.amount; log(`You approved "${m.name}" — ₹${m.amount.toLocaleString('en-IN')} released`);
-        if (p.milestones.every((x) => x.status === 'paid')) { p.status = 'completed'; log('Project completed 🎉'); }
+        completeIfDone(p, log);
       }
       m.updatedAt = now();
     }
