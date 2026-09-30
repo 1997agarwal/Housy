@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { getType, inrShort } from '@/lib/catalog';
+import { ISSUE_TYPES } from '@/lib/issues-shared';
+import type { OpsIssue } from '@/lib/issues';
 
 interface Summary {
   totals: { projects: number; waitlist: number; accepted: number };
@@ -14,10 +16,20 @@ export default function Admin() {
   const { user } = useAuth();
   const [data, setData] = useState<Summary | null>(null);
   const [denied, setDenied] = useState(false);
+  const [issues, setIssues] = useState<OpsIssue[]>([]);
+  const [text, setText] = useState<Record<string, string>>({});
+  const [err, setErr] = useState('');
+  const loadIssues = () => fetch('/api/admin/issues').then(async (r) => r.ok && setIssues(await r.json()));
+  async function act(id: string, body: object) {
+    setErr('');
+    const r = await fetch(`/api/admin/issues/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) setErr((await r.json()).error || 'Failed'); else { setText((t) => ({ ...t, [id]: '' })); loadIssues(); }
+  }
 
   useEffect(() => {
     if (!user) return;
     fetch('/api/admin').then(async (r) => (r.ok ? setData(await r.json()) : setDenied(true)));
+    loadIssues();
   }, [user]);
 
   if (user === undefined) return <div className="mx-auto max-w-5xl px-4 py-10 text-slate-500">Loading…</div>;
@@ -32,6 +44,29 @@ export default function Admin() {
           <div key={l as string} className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-xs font-bold uppercase text-slate-500">{l}</p><p className="text-3xl font-black">{v}</p></div>
         ))}
       </div>
+      <h2 className="mt-8 font-extrabold text-slate-900">Support queue <span className="text-sm font-normal text-slate-500">({issues.filter((i) => i.status !== 'resolved').length} open, {issues.filter((i) => i.escalated).length} escalated)</span></h2>
+      {err && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{err}</p>}
+      <ul className="mt-3 space-y-3">
+        {issues.length === 0 && <li className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">No problems reported.</li>}
+        {issues.map((i) => (
+          <li key={i.id} className={`rounded-2xl border bg-white p-4 ${i.escalated ? 'border-red-300' : 'border-slate-200'}`}>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <b>{ISSUE_TYPES[i.type]}</b><span className="text-slate-500">{i.id} · project {i.projectId} · owner {i.ownerMasked}</span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold">{i.status.replace('_', ' ')}</span>
+              {i.escalated && <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">ESCALATED</span>}
+            </div>
+            <ul className="mt-2 space-y-1 text-sm">{i.messages.map((m, k) => <li key={k} className={m.by === 'housy' ? 'text-blue-900' : 'text-slate-800'}><b>{m.by === 'housy' ? 'Housy' : 'Owner'}:</b> {m.text}</li>)}</ul>
+            {i.status !== 'resolved' && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <input className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" placeholder="Reply / resolution note…" value={text[i.id] ?? ''} onChange={(e) => setText((t) => ({ ...t, [i.id]: e.target.value }))} aria-label={`Reply to ${i.id}`} />
+                <button className="rounded-lg bg-[#E05A2B] px-3 py-1.5 text-sm font-bold text-white" onClick={() => act(i.id, { action: 'reply', text: text[i.id] })}>Reply</button>
+                <button className="rounded-lg border border-emerald-600 px-3 py-1.5 text-sm font-bold text-emerald-700" onClick={() => act(i.id, { action: 'resolve', resolution: text[i.id] })}>Resolve</button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+
       <h2 className="mt-8 font-extrabold text-slate-900">Demand by city</h2>
       <p className="text-sm text-slate-600">Waitlist sign-ups in cities that aren’t live yet are the signal for where to onboard crews next.</p>
       <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
