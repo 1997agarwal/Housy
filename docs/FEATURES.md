@@ -37,7 +37,8 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | **Photo proof required to submit a milestone**, crew note, owner reviews before paying | ✅ | Images resized in browser, validated by magic bytes, private, 2 MB, 6 per milestone; stored on local disk |
 | Design/work review loop: owner can **request changes** (max 3 rounds); fix needs a *fresh* photo; design must be approved before execution phases unlock | ✅ | Designer renders carry captions |
 | Ownership isolation (other users get 404) | ✅ | |
-| Crew directory per city, filter by trade | ✅ | |
+| Crew directory per city, filter by trade, real ratings + recent reviews | ✅ | |
+| **Verified reviews**: owner of a *completed* project rates each person who worked on it (4 criteria, 1–5, optional text), once each; reviewer shown masked ("Asha K."); real ratings blend into the seed baseline | ✅ | Crew *assignment* still ranks on the seed rating, not live reviews |
 | Crew/expert real apps (today: "Demo control" buttons on the owner's page) | 🟡 | The biggest simulation left |
 | Real payments (Razorpay: visit fee, advance, milestone release) | 🟡 | Needs keys |
 | Notifications (SMS/WhatsApp on booking, quote, submission) | ⬜ | |
@@ -51,12 +52,12 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 
 ## 6. Not started (from the PRD)
 AI advisor in the web app (bathroom/wall feasibility, freeform chat — exists only in legacy backend) · floor-plan wizard/scan (legacy mobile) ·
-in-app chat · reviews & ratings · expense/photo journal beyond milestones · 
+in-app chat · expense/photo journal beyond milestones · 
 supervisor-as-a-service · equipment & material marketplace · education content · field-agent app & Housy ID cards · issue/dispute flow · NRI-specific features.
 
 ## Suggested next order
 1. ~~Interiors depth~~ — done.
-2. Reviews & ratings after completion; issue/dispute flow.
+2. ~~Reviews & ratings~~ — done. Issue/dispute flow next.
 3. Rule-based feasibility advisor (wall safety G/A/R, bathroom feasibility) in the plan flow — works without AI keys.
 4. AI advisor (port from legacy backend, needs Gemini key) feeding intake & quote findings.
 5. Supabase storage (deferred by choice), real expert/crew app, payments, notifications (need keys/accounts).

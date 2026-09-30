@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useCity } from '@/lib/city-context';
-import { TRADES, TRADE_LABEL, type Pro } from '@/lib/pros';
+import { TRADES, TRADE_LABEL } from '@/lib/pros';
+import type { ProWithStats } from '@/lib/reviews';
 import { inr } from '@/lib/catalog';
 
 export default function Workers() {
   const { city } = useCity();
   const [trade, setTrade] = useState('');
-  const [pros, setPros] = useState<Pro[] | null>(null);
+  const [pros, setPros] = useState<ProWithStats[] | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -49,8 +50,18 @@ export default function Workers() {
                 </div>
                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">✔ Verified</span>
               </div>
-              <p className="mt-3 text-sm text-slate-700">⭐ {p.rating} ({p.reviews} reviews) · {p.years} yrs · crew of {p.crew}</p>
+              <p className="mt-3 text-sm text-slate-700">⭐ {p.avgRating} ({p.reviewCount} reviews{p.realReviews ? `, ${p.realReviews} on Housy` : ''}) · {p.years} yrs · crew of {p.crew}</p>
               <p className="mt-1 text-sm text-slate-700">{p.dayRate ? `${inr(p.dayRate)}/day` : 'Per-visit fee'} · Housy ID {p.housyId}</p>
+              {p.recent.length > 0 && (
+                <details className="mt-3 text-sm">
+                  <summary className="cursor-pointer font-semibold text-[#E05A2B]">Recent Housy reviews</summary>
+                  <ul className="mt-2 space-y-2">
+                    {p.recent.map((r) => (
+                      <li key={r.id} className="rounded-lg bg-slate-50 p-2"><span className="font-semibold">{r.overall} ★</span> · {r.reviewerName}{r.text ? <p className="text-slate-700">“{r.text}”</p> : null}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
             </li>
           ))}
         </ul>
