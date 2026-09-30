@@ -5,6 +5,15 @@ Urban Company / Snabbit book *tasks* (fix a tap, cut hair). A homeowner who want
 "this wall gone" or "the house rewired" still has to find, judge, sequence and supervise several trades by themselves.
 Housy owns that job end to end — especially for the metro/NRI owner who cannot be on site.
 
+## The customer journey: Build → Renovate → Interiors
+Housy is the one place a property owner goes for the whole life of a home. Three stages share one engine
+(estimate → paid first visit → fixed quote → milestones you approve):
+1. **Build** — architect-led new construction (plot visit → drawings/approvals → foundation → structure → … → finishing).
+2. **Renovate** — bathrooms, kitchens, walls, rewiring, waterproofing, painting, full-home.
+3. **Interiors** — Livspace-style: *design consultation* → 3D design you approve → fixed quote → carpentry/electrical/finishes/furnishing → handover.
+   Owners see a budget guide (interiors ≈ 8–12% of property value) beside the estimate.
+Each project type declares its category, who does the first visit (architect / designer / engineer / mason) and what it's called ("Plot visit", "Design consultation", "Site visit").
+
 ## The core loop (what every feature must serve)
 1. **Pick a project** (not a trade). 2. **Instant phase-wise estimate** from size, city, quality.
 3. **Book a paid site visit** — a verified expert (structural engineer where walls/structure are involved) measures and assesses.
@@ -18,6 +27,7 @@ If a feature does not make this loop faster, safer or more trusted, it does not 
 - **Project-first, not marketplace-first.** The POC/Mistri model remains the supply side; POCs are *assigned to phases*, not browsed by the owner.
 - **Milestone payments are in the MVP** (deviation from PRD v0.2, which deferred escrow to v2): an absent owner cannot verify work, so approve-then-pay is the trust mechanism. Currently simulated — no gateway.
 - **Structural work always includes an engineer phase.** Non-negotiable safety rule from the PRD.
+- **Sign-up = verify phone, then a 2-step profile** (about you: name, email, where you live, language · your property & plans: city, type, area, value, goals, timeline). Returning users skip it. Users who verify inline while booking are booked immediately and nudged (banner) to finish sign-up — we don't block a paying intent. Profile drives the welcome recommendations, the default city and the interiors budget guide. Language is stored; the Hindi UI is not built yet.
 - **Multi-city from day one.** The homeowner picks the city where the *property* is (header picker, remembered per browser). It drives cost multipliers, which crews are shown, and who gets assigned. Registry: `apps/web/src/lib/cities.ts` (mirrored by `apps/backend/supabase/migrations/001_cities.sql`).
 - **Live vs coming-soon cities.** Only cities with onboarded crews (`live`: Bareilly, Lucknow) accept site-visit bookings. Elsewhere the user still gets an estimate, and booking becomes a waitlist. We never assign a crew from another city and never invent workers for a city we haven't onboarded.
 - **Going live in a new city** = onboard crews via field agents, then flip `status` to `live` (plus real rate calibration for that city).
@@ -28,8 +38,8 @@ If a feature does not make this loop faster, safer or more trusted, it does not 
 ## What is real vs. simulated in the current build
 | Real | Simulated / placeholder |
 |---|---|
-| Phone-OTP login, sessions, per-user ownership, City registry, per-city pricing/crews, waitlist, estimate engine (`lib/catalog.ts`), validation, state machine with guarded transitions, persistence, concurrency-safe writes | All rates and city cost multipliers (placeholders — calibrate with real quotes per city) |
-| Responsive UI for the whole loop | Experts/crews are seed data; "Simulate:" buttons stand in for the expert/crew apps |
+| Sign-up/onboarding, profile, Build/Renovate/Interiors project types, Phone-OTP login, sessions, per-user ownership, City registry, per-city pricing/crews, waitlist, estimate engine (`lib/catalog.ts`), validation, state machine with guarded transitions, persistence, concurrency-safe writes | All rates and city cost multipliers (placeholders — calibrate with real quotes per city) |
+| Responsive UI for the whole loop | Interiors & new-house rates are placeholders (interiors ≈ ₹1,050/sq ft standard; house ≈ ₹1,800/sq ft). Experts/crews are seed data; "Simulate:" buttons stand in for the expert/crew apps |
 | | MSG91 sending is written but not yet verified against a live account |
 | | No payment gateway, no notifications, no photos |
 
@@ -39,5 +49,6 @@ If a feature does not make this loop faster, safer or more trusted, it does not 
 2. Supabase-backed store (needs a Supabase project + keys; also enables serverless hosting); real POC data + field-agent onboarding app; WhatsApp dispatch to POCs.
 3. Expert visit app: measurements, photos, editable quote (scope changes = written change orders).
 4. Photo proof per milestone; Razorpay milestone payments.
+4b. Interiors depth: real 3D/moodboard deliverable upload + design approval step, room-by-room scope, material/finish selections, design-fee credit into the project.
 5. Hindi UI; AI advisor (Gemini) feeding the intake questions and quote findings.
 6. Bring the mobile app onto the same API.

@@ -4,7 +4,16 @@ import { getCity } from './cities';
 // NOTE: all rates are placeholder baselines (Bareilly, Standard tier). Calibrate with real quotes.
 
 export type Tier = 'economy' | 'standard' | 'premium';
-export type Trade = 'mason' | 'plumber' | 'electrician' | 'tiler' | 'painter' | 'carpenter' | 'engineer' | 'waterproofer';
+export type Trade = 'mason' | 'plumber' | 'electrician' | 'tiler' | 'painter' | 'carpenter' | 'engineer' | 'waterproofer' | 'designer' | 'architect';
+export type Category = 'build' | 'renovate' | 'interiors';
+export const CATEGORIES: Record<Category, { title: string; blurb: string }> = {
+  build: { title: 'Build a new home', blurb: 'From approved drawings to handover.' },
+  renovate: { title: 'Renovate', blurb: 'Fix, upgrade or reshape what you already have.' },
+  interiors: { title: 'Interiors', blurb: 'Design and deliver the inside — kitchens, wardrobes, ceilings, lighting.' },
+};
+export const STYLES = ['Modern', 'Contemporary', 'Minimalist', 'Traditional', 'Scandinavian'] as const;
+// Interiors typically run ~8–12% of the property value (industry rule of thumb).
+export const interiorBudgetGuide = (valueLakh: number) => ({ low: valueLakh * 100000 * 0.08, high: valueLakh * 100000 * 0.12 });
 
 export const TIERS: Record<Tier, { label: string; mult: number; blurb: string }> = {
   economy: { label: 'Economy', mult: 0.75, blurb: 'Basic fittings, functional finish' },
@@ -18,6 +27,12 @@ interface PhaseDef { id: string; name: string; trade: Trade; baseDays: number; d
 
 export interface ProjectType {
   id: string;
+  category: Category;
+  expert?: Trade;            // who does the paid first visit (default: mason, or engineer if needsEngineer)
+  visitLabel: string;        // "Site visit" | "Design consultation" …
+  featured?: boolean;        // shown first on the post-sign-up welcome screen
+  interiors?: boolean;       // asks for a style, shows the property-value budget guide
+  staticFlags?: { level: 'green' | 'amber' | 'red'; text: string }[];
   title: string;
   tagline: string;
   emoji: string;
@@ -31,7 +46,7 @@ export interface ProjectType {
 
 export const PROJECT_TYPES: ProjectType[] = [
   {
-    id: 'new-bathroom', title: 'Add a bathroom', emoji: '🚿',
+    id: 'new-bathroom', featured: true, category: 'renovate', visitLabel: 'Site visit', title: 'Add a bathroom', emoji: '🚿',
     tagline: 'Plumbing, drainage, waterproofing, tiling and fittings — planned and delivered as one job.',
     areaLabel: 'Bathroom size (sq ft)', defaultArea: 45, askDrain: true, visitFee: 499,
     phases: [
@@ -54,7 +69,7 @@ export const PROJECT_TYPES: ProjectType[] = [
     ],
   },
   {
-    id: 'kitchen', title: 'Renovate kitchen', emoji: '🍳',
+    id: 'kitchen', featured: true, category: 'renovate', visitLabel: 'Site visit', title: 'Renovate kitchen', emoji: '🍳',
     tagline: 'Platform, tiling, plumbing, wiring and cabinetry with a single point of accountability.',
     areaLabel: 'Kitchen size (sq ft)', defaultArea: 100, visitFee: 499,
     phases: [
@@ -73,7 +88,7 @@ export const PROJECT_TYPES: ProjectType[] = [
     ],
   },
   {
-    id: 'wall-break', title: 'Break or move a wall', emoji: '🧱',
+    id: 'wall-break', category: 'renovate', visitLabel: 'Site visit', title: 'Break or move a wall', emoji: '🧱',
     tagline: 'Structural engineer sign-off first, then safe demolition and re-finishing.',
     areaLabel: 'Wall area (sq ft)', defaultArea: 100, needsEngineer: true, visitFee: 999,
     phases: [
@@ -88,7 +103,7 @@ export const PROJECT_TYPES: ProjectType[] = [
     ],
   },
   {
-    id: 'rewiring', title: 'Rewire the house', emoji: '💡',
+    id: 'rewiring', category: 'renovate', visitLabel: 'Site visit', title: 'Rewire the house', emoji: '💡',
     tagline: 'Safe concealed wiring, load planning and earthing by licensed electricians.',
     areaLabel: 'Built-up area (sq ft)', defaultArea: 1200, visitFee: 499,
     phases: [
@@ -106,7 +121,7 @@ export const PROJECT_TYPES: ProjectType[] = [
     ],
   },
   {
-    id: 'waterproofing', title: 'Roof / terrace waterproofing', emoji: '☔',
+    id: 'waterproofing', category: 'renovate', visitLabel: 'Site visit', title: 'Roof / terrace waterproofing', emoji: '☔',
     tagline: 'Fix leakage properly, with a written warranty.',
     areaLabel: 'Terrace / roof area (sq ft)', defaultArea: 800, visitFee: 499,
     phases: [
@@ -121,7 +136,7 @@ export const PROJECT_TYPES: ProjectType[] = [
     ],
   },
   {
-    id: 'painting', title: 'Painting & putty', emoji: '🎨',
+    id: 'painting', category: 'renovate', visitLabel: 'Site visit', title: 'Painting & putty', emoji: '🎨',
     tagline: 'Interior and exterior painting with measured quantities and finish checks.',
     areaLabel: 'Built-up area (sq ft)', defaultArea: 1200, visitFee: 299,
     phases: [
@@ -134,7 +149,7 @@ export const PROJECT_TYPES: ProjectType[] = [
     ],
   },
   {
-    id: 'full-renovation', title: 'Full-home renovation', emoji: '🏠',
+    id: 'full-renovation', featured: true, category: 'renovate', visitLabel: 'Site visit', title: 'Full-home renovation', emoji: '🏠',
     tagline: 'Plan and run a whole-house renovation, trade by trade, in the right order.',
     areaLabel: 'Built-up area (sq ft)', defaultArea: 1800, needsEngineer: true, visitFee: 1499,
     phases: [
@@ -154,7 +169,90 @@ export const PROJECT_TYPES: ProjectType[] = [
         { label: 'Doors, paint, hardware', kind: 'material', basis: 'area', rate: 190 }] },
     ],
   },
+  {
+    id: 'new-house', featured: true, category: 'build', visitLabel: 'Plot visit', expert: 'architect', needsEngineer: true, title: 'Build a new house', emoji: '🏗️',
+    tagline: 'Architect-drawn plan, engineer-supervised structure, and every trade in sequence — plot to handover.',
+    areaLabel: 'Total built-up area (sq ft, all floors)', defaultArea: 1500, visitFee: 1499,
+    staticFlags: [{ level: 'amber', text: 'Map approval from your local development authority is required before construction. Timeline assumes approval is obtained during the design phase.' }],
+    phases: [
+      { id: 'design', name: 'Architectural design, drawings & approvals', trade: 'architect', baseDays: 30, items: [
+        { label: 'Architect fee (plans, structural coordination)', kind: 'labor', basis: 'area', rate: 40 },
+        { label: 'Soil test, survey & approval filing', kind: 'labor', basis: 'fixed', rate: 25000 }] },
+      { id: 'foundation', name: 'Excavation, foundation & plinth', trade: 'mason', baseDays: 10, daysPerSqft: 0.01, items: [
+        { label: 'Foundation labor', kind: 'labor', basis: 'area', rate: 110 },
+        { label: 'Cement, steel, aggregate', kind: 'material', basis: 'area', rate: 190 }] },
+      { id: 'structure', name: 'RCC structure (columns, beams, slabs)', trade: 'mason', baseDays: 25, daysPerSqft: 0.03, items: [
+        { label: 'Structure labor & shuttering', kind: 'labor', basis: 'area', rate: 160 },
+        { label: 'Steel, cement, ready-mix', kind: 'material', basis: 'area', rate: 420 }] },
+      { id: 'masonry', name: 'Brickwork & plastering', trade: 'mason', baseDays: 15, daysPerSqft: 0.015, items: [
+        { label: 'Masonry & plaster labor', kind: 'labor', basis: 'area', rate: 90 },
+        { label: 'Bricks, sand, cement', kind: 'material', basis: 'area', rate: 130 }] },
+      { id: 'mep', name: 'Plumbing & electrical', trade: 'plumber', baseDays: 12, daysPerSqft: 0.01, items: [
+        { label: 'Plumbing + electrical labor', kind: 'labor', basis: 'area', rate: 80 },
+        { label: 'Pipes, wiring, fittings', kind: 'material', basis: 'area', rate: 150 }] },
+      { id: 'flooring', name: 'Flooring, doors & windows', trade: 'tiler', baseDays: 12, daysPerSqft: 0.01, items: [
+        { label: 'Tiling & fitting labor', kind: 'labor', basis: 'area', rate: 60 },
+        { label: 'Tiles, doors, windows', kind: 'material', basis: 'area', rate: 260 }] },
+      { id: 'finish', name: 'Painting & finishing', trade: 'painter', baseDays: 8, daysPerSqft: 0.006, items: [
+        { label: 'Painting labor', kind: 'labor', basis: 'area', rate: 40 },
+        { label: 'Putty & paint', kind: 'material', basis: 'area', rate: 70 }] },
+    ],
+  },
+  {
+    id: 'interiors-full', featured: true, category: 'interiors', visitLabel: 'Design consultation', expert: 'designer', interiors: true, title: 'Full-home interiors', emoji: '🛋️',
+    tagline: 'A designer plans your whole home in 3D, you approve every look, then verified crews build it.',
+    areaLabel: 'Carpet area (sq ft)', defaultArea: 1000, visitFee: 999,
+    staticFlags: [{ level: 'green', text: 'Design is approved by you in 3D before any work or material order starts.' }],
+    phases: [
+      { id: 'design', name: 'Design: space planning, 3D & working drawings', trade: 'designer', baseDays: 14, items: [
+        { label: 'Designer fee', kind: 'labor', basis: 'area', rate: 70 },
+        { label: '3D renders & drawings', kind: 'labor', basis: 'fixed', rate: 15000 }] },
+      { id: 'civil', name: 'Civil changes & false ceiling', trade: 'mason', baseDays: 8, daysPerSqft: 0.006, items: [
+        { label: 'Civil & ceiling labor', kind: 'labor', basis: 'area', rate: 45 },
+        { label: 'Gypsum / POP, framing', kind: 'material', basis: 'area', rate: 55 }] },
+      { id: 'electrical', name: 'Electrical & lighting', trade: 'electrician', baseDays: 6, daysPerSqft: 0.004, items: [
+        { label: 'Wiring & fixture labor', kind: 'labor', basis: 'area', rate: 35 },
+        { label: 'Lights, switches, wiring', kind: 'material', basis: 'area', rate: 90 }] },
+      { id: 'carpentry', name: 'Modular kitchen, wardrobes & carpentry', trade: 'carpenter', baseDays: 20, daysPerSqft: 0.015, items: [
+        { label: 'Factory finishing & installation labor', kind: 'labor', basis: 'area', rate: 110 },
+        { label: 'Plywood, laminates, hardware, countertop', kind: 'material', basis: 'area', rate: 240 }] },
+      { id: 'walls', name: 'Wall finishes & painting', trade: 'painter', baseDays: 6, daysPerSqft: 0.005, items: [
+        { label: 'Painting labor', kind: 'labor', basis: 'area', rate: 30 },
+        { label: 'Paint, texture, wallpaper', kind: 'material', basis: 'area', rate: 60 }] },
+      { id: 'furnish', name: 'Furniture, décor & installation', trade: 'carpenter', baseDays: 7, daysPerSqft: 0.004, items: [
+        { label: 'Installation labor', kind: 'labor', basis: 'area', rate: 50 },
+        { label: 'Loose furniture, curtains, décor', kind: 'material', basis: 'area', rate: 110 }] },
+      { id: 'handover', name: 'Deep clean & handover', trade: 'mason', baseDays: 2, items: [
+        { label: 'Professional cleaning & snag fixing', kind: 'labor', basis: 'fixed', rate: 8000 }] },
+    ],
+  },
+  {
+    id: 'interiors-room', featured: true, category: 'interiors', visitLabel: 'Design consultation', expert: 'designer', interiors: true, title: 'Single-room makeover', emoji: '🛏️',
+    tagline: 'One room, designed and delivered — bedroom, living room, kids’ room or study.',
+    areaLabel: 'Room size (sq ft)', defaultArea: 150, visitFee: 499,
+    staticFlags: [{ level: 'green', text: 'You approve the 3D design before any work starts.' }],
+    phases: [
+      { id: 'design', name: 'Design & 3D visualisation', trade: 'designer', baseDays: 7, items: [
+        { label: 'Designer fee', kind: 'labor', basis: 'area', rate: 120 },
+        { label: '3D renders', kind: 'labor', basis: 'fixed', rate: 6000 }] },
+      { id: 'ceiling', name: 'False ceiling & lighting', trade: 'electrician', baseDays: 4, daysPerSqft: 0.01, items: [
+        { label: 'Ceiling & lighting labor', kind: 'labor', basis: 'area', rate: 45 },
+        { label: 'Ceiling material, lights', kind: 'material', basis: 'area', rate: 110 }] },
+      { id: 'carpentry', name: 'Wardrobe, bed, storage & carpentry', trade: 'carpenter', baseDays: 10, daysPerSqft: 0.03, items: [
+        { label: 'Carpentry labor', kind: 'labor', basis: 'area', rate: 120 },
+        { label: 'Plywood, laminates, hardware', kind: 'material', basis: 'area', rate: 380 }] },
+      { id: 'paint', name: 'Wall finishes & painting', trade: 'painter', baseDays: 3, daysPerSqft: 0.01, items: [
+        { label: 'Painting labor', kind: 'labor', basis: 'area', rate: 25 },
+        { label: 'Paint & texture', kind: 'material', basis: 'area', rate: 45 }] },
+      { id: 'furnish', name: 'Furnishing & installation', trade: 'carpenter', baseDays: 3, daysPerSqft: 0.01, items: [
+        { label: 'Installation labor', kind: 'labor', basis: 'area', rate: 30 },
+        { label: 'Curtains, décor, loose furniture', kind: 'material', basis: 'area', rate: 200 }] },
+    ],
+  },
 ];
+
+const ORDER: Category[] = ['build', 'renovate', 'interiors'];
+PROJECT_TYPES.sort((a, b) => ORDER.indexOf(a.category) - ORDER.indexOf(b.category));
 
 export const getType = (id: string) => PROJECT_TYPES.find((t) => t.id === id);
 
@@ -208,6 +306,7 @@ export function estimate(input: EstimateInput): Estimate {
     else if (drain === 0) flags.push({ level: 'amber', text: 'Distance to the nearest drain/septic is unknown — the site visit will measure it; cost may change.' });
     else flags.push({ level: 'green', text: `Drain run of ${drain} ft is comfortably within a workable 1:40 slope.` });
   }
+  if (type.staticFlags) flags.push(...type.staticFlags);
   if (input.tier === 'premium') flags.push({ level: 'green', text: 'Premium tier: material lead-times can add 3–7 days.' });
 
   return {

@@ -5,6 +5,7 @@ import { CityProvider } from '@/lib/city-context';
 import { CitySelect } from '@/lib/CitySelect';
 import { AuthProvider } from '@/lib/auth-context';
 import { UserMenu } from '@/lib/UserMenu';
+import { OnboardingBanner } from '@/lib/OnboardingBanner';
 
 export const metadata: Metadata = {
   title: 'Housy — Renovate your home without being there',
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </nav>
           </div>
         </header>
+        <OnboardingBanner />
         <main className="flex-1">{children}</main>
         <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500">
           Housy — whole-project renovation, run for you. AI guidance is not a substitute for a licensed structural engineer.

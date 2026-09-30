@@ -6,7 +6,7 @@ import { useCity } from '@/lib/city-context';
 import { CitySelect } from '@/lib/CitySelect';
 import { useAuth } from '@/lib/auth-context';
 import { LoginForm } from '@/lib/LoginForm';
-import { TIERS, estimate, getType, inr, inrShort, type Tier } from '@/lib/catalog';
+import { STYLES, TIERS, estimate, getType, inr, inrShort, interiorBudgetGuide, type Tier } from '@/lib/catalog';
 
 const field = 'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-[#E05A2B] focus:outline-none focus:ring-2 focus:ring-orange-200';
 const label = 'block text-sm font-semibold text-slate-700';
@@ -24,8 +24,9 @@ function slots() {
 
 export default function Plan({ params }: { params: Promise<{ type: string }> }) {
   const { type: typeId } = use(params);
-  const type = getType(typeId);
-  if (!type) notFound();
+  const found = getType(typeId);
+  if (!found) notFound();
+  const type = found; // narrowed once here so closures below (which TS can't narrow) see a defined type
   const router = useRouter();
   const slotOptions = useMemo(slots, []);
 
@@ -36,6 +37,8 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
   const [tier, setTier] = useState<Tier>('standard');
   const [drain, setDrain] = useState<number | ''>(type.askDrain ? 15 : '');
   const [notes, setNotes] = useState('');
+  const [style, setStyle] = useState<string>('');
+  const [valueLakh, setValueLakh] = useState<number | ''>('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [slot, setSlot] = useState(slotOptions[0].value);
@@ -43,7 +46,10 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
   const [error, setError] = useState('');
 
   // Prefill the site contact from the verified account once known (never overwrite what the user typed).
-  useEffect(() => { if (user) { setName((n) => n || user.name); setPhone((p) => p || user.phone); } }, [user]);
+  useEffect(() => { if (user) {
+      setName((n) => n || user.name); setPhone((p) => p || user.phone);
+      const pv = user.profile?.propertyValueLakh; if (pv) setValueLakh((v) => v || pv);
+    } }, [user]);
 
   const est = useMemo(
     () => estimate({ typeId, city: city.id, area: Number(area) || 0, tier, drainFt: drain === '' ? undefined : Number(drain) }),
@@ -51,11 +57,12 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
   );
 
   async function book() {
+    if (type.interiors && !style) { setError('Pick a design style'); return; }
     setBusy(true); setError('');
     try {
       const res = await fetch('/api/projects', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ typeId, city: city.id, area: Number(area), tier, drainFt: drain === '' ? undefined : Number(drain), notes, name, phone, slot }),
+        body: JSON.stringify({ typeId, city: city.id, area: Number(area), tier, drainFt: drain === '' ? undefined : Number(drain), notes, style: style || undefined, propertyValueLakh: valueLakh === '' ? undefined : valueLakh, name, phone, slot }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not book');
@@ -100,6 +107,27 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
                 </div>
               )}
             </div>
+            {type.interiors && (
+              <>
+                <div>
+                  <span className={label}>Design style</span>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {STYLES.map((st) => (
+                      <button key={st} type="button" aria-pressed={style === st} onClick={() => setStyle(st)}
+                        className={`rounded-full border px-4 py-2 text-sm font-semibold ${style === st ? 'border-[#E05A2B] bg-orange-50 text-[#C44519]' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400'}`}>{st}</button>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">Not sure? Pick the closest — your designer will show options during the consultation.</p>
+                </div>
+                <div>
+                  <label className={label} htmlFor="pv">Approx. property value (₹ lakh) <span className="font-normal text-slate-500">(optional)</span></label>
+                  <input id="pv" type="number" min={1} className={field} value={valueLakh} onChange={(e) => setValueLakh(e.target.value === '' ? '' : Number(e.target.value))} placeholder="e.g. 100 for ₹1 crore" />
+                  {valueLakh !== '' && valueLakh > 0 && (() => { const g = interiorBudgetGuide(valueLakh); return (
+                    <p className="mt-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-900">Interiors typically cost <b>{inrShort(g.low)} – {inrShort(g.high)}</b> for this property (8–12% of its value). Your estimate is on the right.</p>
+                  ); })()}
+                </div>
+              </>
+            )}
             <div>
               <span className={label}>Quality</span>
               <div className="mt-1 grid gap-2 sm:grid-cols-3">
@@ -135,9 +163,9 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
             </section>
           ) : (
           <section className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
-            <h2 className="font-extrabold text-slate-900">2. Book a site visit — {inr(type.visitFee)}</h2>
+            <h2 className="font-extrabold text-slate-900">2. Book a {type.visitLabel.toLowerCase()} — {inr(type.visitFee)}</h2>
             <p className="text-sm text-slate-600">
-              {type.needsEngineer ? 'A structural engineer' : 'A verified expert'} visits your property, measures it and issues a fixed quote.
+              {type.interiors ? 'A verified interior designer visits your home, understands how you live, and prepares your design and quote.' : type.needsEngineer ? 'A verified expert visits the site, measures it and issues a fixed quote.' : 'A verified expert visits your property, measures it and issues a fixed quote.'}
               You do not need to be present — share a contact who can open the door.
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -162,7 +190,7 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
             {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{error}</p>}
             {user ? (
               <button onClick={book} disabled={busy} className="w-full rounded-xl bg-[#E05A2B] px-6 py-3 font-bold text-white hover:bg-[#C44519] disabled:opacity-60 sm:w-auto">
-                {busy ? 'Booking…' : `Book site visit · ${inr(type.visitFee)}`}
+                {busy ? 'Booking…' : `Book ${type.visitLabel.toLowerCase()} · ${inr(type.visitFee)}`}
               </button>
             ) : user === null ? (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -170,7 +198,7 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
                 <LoginForm defaultName={name} defaultPhone={phone} />
               </div>
             ) : null}
-            <p className="text-xs text-slate-500">Visit fee is adjusted against your project if you go ahead. (Payment gateway not connected in this build.)</p>
+            <p className="text-xs text-slate-500">Fee is adjusted against your project if you go ahead. (Payment gateway not connected in this build.)</p>
           </section>
           )}
         </div>
