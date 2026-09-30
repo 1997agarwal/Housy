@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context';
 import { LoginForm } from '@/lib/LoginForm';
 import type { Project } from '@/lib/projects';
 
-const STATUS = { visit_scheduled: 'Visit scheduled', quote_ready: 'Quote ready', active: 'In progress', completed: 'Completed' } as const;
+const STATUS = { visit_scheduled: 'Visit scheduled', quote_ready: 'Quote ready', active: 'In progress', completed: 'Completed', cancelled: 'Cancelled' } as const;
 
 export default function Projects() {
   const { user } = useAuth();

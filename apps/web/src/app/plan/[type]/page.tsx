@@ -5,6 +5,7 @@ import { useRouter, notFound } from 'next/navigation';
 import { useCity } from '@/lib/city-context';
 import { CitySelect } from '@/lib/CitySelect';
 import { useAuth } from '@/lib/auth-context';
+import { visitSlots } from '@/lib/slots';
 import { LoginForm } from '@/lib/LoginForm';
 import { STYLES, TIERS, estimate, getType, inr, inrShort, interiorBudgetGuide, type Tier } from '@/lib/catalog';
 
@@ -12,23 +13,13 @@ const field = 'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2
 const label = 'block text-sm font-semibold text-slate-700';
 const FLAG = { green: 'border-emerald-200 bg-emerald-50 text-emerald-900', amber: 'border-amber-200 bg-amber-50 text-amber-900', red: 'border-red-200 bg-red-50 text-red-900' };
 
-// Next 3 days, 10am and 3pm slots (local time).
-function slots() {
-  const out: { value: string; text: string }[] = [];
-  for (let d = 1; d <= 3; d++) for (const h of [10, 15]) {
-    const t = new Date(); t.setDate(t.getDate() + d); t.setHours(h, 0, 0, 0);
-    out.push({ value: t.toISOString(), text: t.toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) });
-  }
-  return out;
-}
-
 export default function Plan({ params }: { params: Promise<{ type: string }> }) {
   const { type: typeId } = use(params);
   const found = getType(typeId);
   if (!found) notFound();
   const type = found; // narrowed once here so closures below (which TS can't narrow) see a defined type
   const router = useRouter();
-  const slotOptions = useMemo(slots, []);
+  const slotOptions = useMemo(visitSlots, []);
 
   const { city } = useCity();
   const { user } = useAuth();

@@ -1,146 +1,56 @@
-# 🏠 Housy — Renovation Intelligence Platform
+# 🏠 Housy
 
-> Your renovation, simplified.
+**Build it. Renovate it. Design it.** Housy is the one place a homeowner — especially one who lives in another city —
+goes to build, renovate and do the interiors of a home, with verified experts, a fixed price, and milestone payments
+they approve after seeing photo proof.
 
-## Project Structure
+Think *Urban Company for whole projects*: not "fix a tap", but "add a bathroom", "redo my kitchen", "design my flat",
+"build my house".
 
-```
-Housy/
-├── apps/
-│   ├── mobile/          # Expo React Native (Android + iOS)
-│   ├── web/             # Next.js web app
-│   └── backend/         # NestJS API server
-│       └── supabase/
-│           └── schema.sql  ← Run this first in Supabase
-├── packages/
-│   └── shared/          # Shared TypeScript types
-├── turbo.json
-└── package.json
-```
+## The customer journey
+1. Pick your **city** (20 cities; Bareilly & Lucknow live, the rest on a waitlist).
+2. Pick a **project** — Build, Renovate or Interiors — and get an instant phase-wise estimate.
+3. Book a paid first visit: site visit / design consultation / plot visit (architect, designer, engineer or mason).
+4. The expert measures on site → you get a **fixed quote** (re-priced from real measurements).
+5. Accept → verified crews are assigned per phase. Each milestone needs **photo proof**; you approve, then it's paid.
 
-## Quick Start
-
-### 1. Prerequisites
-- Node.js ≥ 18
-- npm ≥ 9
-- Expo CLI: `npm install -g expo-cli`
-- A [Supabase](https://supabase.com) project (free tier works)
-- A [Google AI Studio](https://aistudio.google.com) API key (Gemini)
-
----
-
-### 2. Database Setup (Supabase)
-1. Go to [supabase.com](https://supabase.com) → New Project
-2. Open **SQL Editor** → paste the contents of `apps/backend/supabase/schema.sql`
-3. Click **Run** — this creates all 9 tables, RLS policies, indexes, and triggers
-
----
-
-### 3. Backend Setup
+## Quick start (web app)
 ```bash
-cd apps/backend
+git clone https://github.com/1997agarwal/Housy.git && cd Housy
+npm install                      # installs all workspaces (web, mobile, backend); use --workspace=apps/web for just the web app
+cp apps/web/.env.example apps/web/.env.local     # optional for local dev
+npm run web                      # → http://localhost:3000
+```
+In dev, **SMS login runs in demo mode**: the 6-digit code is shown on screen, no SMS is sent. Any Indian mobile number works.
 
-# Copy and fill in your credentials
-cp .env.example .env
+| Command (from `apps/web`) | What it does |
+|---|---|
+| `npm run dev` | Dev server on :3000 |
+| `npm test` | 70+ unit tests (pricing, project state machine, ownership, auth, uploads, admin) |
+| `npm run typecheck` | `tsc --noEmit` (strict) |
+| `npm run lint` | ESLint (Next + TypeScript rules) |
+| `npm run build` | Production build |
 
-# Install dependencies
-npm install
+CI (`.github/workflows/ci.yml`) runs typecheck, lint, tests and build on every push and PR.
 
-# Run in dev mode
-npm run dev
-# → API running at http://localhost:4000/api/v1
-# → Swagger docs at http://localhost:4000/docs
+Data is stored as JSON under `apps/web/.data/` (git-ignored) so everything runs with **no external services**.
+To operate as an admin, set `HOUSY_ADMIN_PHONES=<your number>` and open `/admin`.
+
+## Repo map
+```
+apps/web/            ← THE PRODUCT. Next.js 15 (App Router) + Tailwind 4. UI, API routes, domain logic.
+  src/lib/           catalog (project types + pricing), cities, pros (seed crews), projects (state machine),
+                     auth (OTP + sessions), profile, uploads, admin, kv (JSON store)
+  src/app/           pages + /api routes
+apps/backend/        legacy NestJS API (not connected) — see docs/LEGACY_BACKEND_MOBILE.md
+apps/mobile/         legacy Expo app (not connected)
+packages/shared/     shared TS types (legacy apps)
+docs/                PRODUCT_DIRECTION.md (why & decisions) · FEATURES.md (what's built / half-baked / next)
+PRD_v0.2.md, MVP_Scope_v0.2.md, wireframes_*.jpg    original product docs
+AGENTS.md            start here if you are an AI coding tool
 ```
 
-**Required `.env` values:**
-| Key | Where to get it |
-|-----|----------------|
-| `SUPABASE_URL` | Supabase → Settings → API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API |
-| `SUPABASE_ANON_KEY` | Supabase → Settings → API |
-| `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) |
-| `RAZORPAY_KEY_ID` | [razorpay.com](https://razorpay.com) (test mode) |
-
----
-
-### 4. Mobile App Setup
-```bash
-cd apps/mobile
-
-# Copy and fill in env vars
-cp .env.example .env
-
-# Install dependencies
-npm install
-
-# Start Expo dev server
-npm run dev
-# → Scan QR code with Expo Go app on your phone
-# → Or run on emulator: npm run android
-```
-
-**Required `.env` values:**
-| Key | Value |
-|-----|-------|
-| `EXPO_PUBLIC_SUPABASE_URL` | Same as backend SUPABASE_URL |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Same as backend SUPABASE_ANON_KEY |
-| `EXPO_PUBLIC_API_URL` | `http://localhost:4000/api/v1` (or deployed URL) |
-
----
-
-## App Screens
-
-| Screen | File | Description |
-|--------|------|-------------|
-| Login | `app/(auth)/login.tsx` | Phone OTP authentication |
-| Home | `app/(tabs)/home.tsx` | Dashboard with project card + quick actions |
-| Find Labor | `app/(tabs)/search.tsx` | Search & filter verified POCs |
-| Ask Housy | `app/(tabs)/advisor.tsx` | AI renovation advisor chat |
-| Project | `app/(tabs)/project.tsx` | Project dashboard — tasks, budget, photos |
-| Profile | `app/(tabs)/profile.tsx` | User profile + settings |
-| Property Wizard | `app/(onboarding)/property.tsx` | 4-step property setup |
-
-## Backend API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/v1/auth/send-otp` | Send OTP to phone |
-| POST | `/api/v1/auth/verify-otp` | Verify OTP, get token |
-| POST | `/api/v1/properties` | Create property profile |
-| GET | `/api/v1/properties` | List user's properties |
-| POST | `/api/v1/ai-advisor/chat` | Freeform AI chat |
-| POST | `/api/v1/ai-advisor/bathroom-feasibility` | Bathroom addition analysis |
-| POST | `/api/v1/ai-advisor/wall-breaking` | Wall safety assessment |
-| POST | `/api/v1/ai-advisor/budget-estimate` | Cost range estimate |
-| POST | `/api/v1/ai-advisor/material-calculator` | Bill of materials |
-
-Full docs: `http://localhost:4000/docs` (Swagger UI)
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Mobile | React Native (Expo) |
-| Web | Next.js 15 |
-| Backend | NestJS |
-| Database | PostgreSQL (Supabase) |
-| Auth | Supabase OTP |
-| AI | Gemini 1.5 Pro |
-| State | Zustand |
-| Data fetching | TanStack Query |
-| Payments | Razorpay |
-
----
-
-## Phase Roadmap
-
-- **Phase 1 (Now):** Renovation — Labor marketplace, AI advisor, project management
-- **Phase 2:** New Construction — Full build from scratch
-- **Phase 3:** Interiors — Modular furniture, décor, false ceilings
-- **Phase 4:** Luxury & Smart Homes
-
----
-
-*Built for the urban Indian homeowner who's lost in the chaos of renovation.*
+## Read next
+- [`docs/FEATURES.md`](docs/FEATURES.md) — exactly what works, what's simulated, what's next.
+- [`docs/PRODUCT_DIRECTION.md`](docs/PRODUCT_DIRECTION.md) — north star and the decisions taken.
+- [`AGENTS.md`](AGENTS.md) — conventions and gotchas for anyone (human or AI) changing the code.

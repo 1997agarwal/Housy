@@ -3,15 +3,20 @@ import { normalizePhone } from './phone';
 import { estimate, getType, STYLES, type Estimate, type Tier } from './catalog';
 import { proForTrade, visitExpert, type Pro } from './pros';
 import { getCity } from './cities';
+import { saveImage, type ImageExt } from './uploads';
+import { MAX_PHOTOS_PER_MILESTONE } from './limits';
 
 // ── Types ────────────────────────────────────────────────────────────
-export type ProjectStatus = 'visit_scheduled' | 'quote_ready' | 'active' | 'completed';
+export type ProjectStatus = 'visit_scheduled' | 'quote_ready' | 'active' | 'completed' | 'cancelled';
 export type MilestoneStatus = 'upcoming' | 'in_progress' | 'in_review' | 'paid';
 
 export interface Milestone {
   id: string; phaseId: string; name: string; days: number; amount: number;
   status: MilestoneStatus; pro: Pro; updatedAt?: string;
+  crewNote?: string;         // the crew's message when they submit the work for review
 }
+export interface Photo { id: string; milestoneId: string; ext: ImageExt; caption?: string; at: string }
+export { MAX_PHOTOS_PER_MILESTONE };
 export interface Project {
   id: string; owner: string; createdAt: string; status: ProjectStatus;
   typeId: string; city: string; area: number; tier: Tier; drainFt?: number; notes?: string; style?: string; propertyValueLakh?: number;
@@ -21,6 +26,9 @@ export interface Project {
   quote?: { total: number; advance: number; findings: string[]; issuedAt: string; accepted: boolean };
   milestones: Milestone[];
   paid: number;
+  initialTotal?: number;     // estimate total at booking, kept when the expert's measurements re-price it
+  cancelReason?: string;
+  photos?: Photo[];
   timeline: { at: string; text: string }[];
 }
 
@@ -90,9 +98,12 @@ export function createProject(input: CreateInput, owner: string) {
 const ADVANCE_PCT = 0.2;
 
 export type Action =
-  | { action: 'complete_visit' }
+  | { action: 'complete_visit'; measuredArea?: number; measuredDrainFt?: number; note?: string }
+  | { action: 'reschedule'; slot: string }
+  | { action: 'cancel'; reason?: string }
   | { action: 'accept_quote' }
-  | { action: 'start' | 'submit' | 'approve'; milestoneId: string };
+  | { action: 'start' | 'approve'; milestoneId: string }
+  | { action: 'submit'; milestoneId: string; note?: string };
 
 export class ConflictError extends Error {}
 
@@ -104,16 +115,49 @@ export function act(id: string, a: Action, owner: string) {
 
     if (a.action === 'complete_visit') {
       if (p.status !== 'visit_scheduled') throw new ConflictError('Visit already completed');
+      const type = getType(p.typeId)!;
+      const num = (v: unknown, min: number, max: number, label: string) => {
+        if (v === undefined || v === null || v === '') return undefined;
+        const n = Number(v);
+        if (!(n >= min && n <= max)) throw new ValidationError(`${label} looks wrong`);
+        return n;
+      };
+      const area = num(a.measuredArea, 5, 20000, 'Measured area') ?? p.area;
+      const drain = type.askDrain ? (num(a.measuredDrainFt, 0, 500, 'Measured drain distance') ?? p.drainFt) : p.drainFt;
+      const before = p.estimate.total;
+      const changed = area !== p.area || drain !== p.drainFt;
+      const findings: string[] = [];
+      if (changed) {
+        // The expert's measurements replace the owner's guess, and the price follows.
+        p.initialTotal = before;
+        const pct = Math.round(((area - p.area) / p.area) * 100);
+        if (area !== p.area) findings.push(`Measured ${area} sq ft on site (you estimated ${p.area}${pct ? `, ${pct > 0 ? '+' : ''}${pct}%` : ''}).`);
+        if (drain !== p.drainFt) findings.push(`Measured drain/septic distance: ${drain} ft (you estimated ${p.drainFt ?? 'unknown'}).`);
+        p.area = area; p.drainFt = drain;
+        p.estimate = estimate({ typeId: p.typeId, city: p.city, area, tier: p.tier, drainFt: drain });
+      } else {
+        findings.push(`Measured on site: ${p.area} sq ft — matches your estimate.`);
+      }
+      findings.push(...p.estimate.flags.filter((f) => f.level !== 'green').map((f) => f.text));
+      const note = typeof a.note === 'string' ? a.note.trim().slice(0, 500) : '';
+      if (note) findings.push(`Expert note: ${note}`);
+      findings.push('Fixed price: only changes if you change the scope in writing.');
       const total = Math.round(p.estimate.total / 500) * 500;
-      const findings = [
-        `Site measured: ${p.area} sq ft confirmed.`,
-        ...p.estimate.flags.filter((f) => f.level !== 'green').map((f) => f.text),
-        'Fixed price: only changes if you change the scope in writing.',
-      ];
       p.visit.done = true;
       p.status = 'quote_ready';
       p.quote = { total, advance: Math.round((total * ADVANCE_PCT) / 100) * 100, findings, issuedAt: now(), accepted: false };
-      log(`${p.visit.expert.name} completed the ${getType(p.typeId)!.visitLabel.toLowerCase()} and issued a fixed quote of ₹${total.toLocaleString('en-IN')}`);
+      log(`${p.visit.expert.name} completed the ${type.visitLabel.toLowerCase()} and issued a fixed quote of ₹${total.toLocaleString('en-IN')}${changed ? ` (estimate at booking: ₹${(Math.round(before / 500) * 500).toLocaleString('en-IN')})` : ''}`);
+    } else if (a.action === 'reschedule') {
+      if (p.status !== 'visit_scheduled') throw new ConflictError('The visit has already happened');
+      const t = Date.parse(a.slot);
+      if (Number.isNaN(t) || t < Date.now()) throw new ValidationError('Pick a future time slot');
+      p.visit.slot = new Date(t).toISOString();
+      log(`Visit rescheduled to ${new Date(t).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}`);
+    } else if (a.action === 'cancel') {
+      if (p.status !== 'visit_scheduled' && p.status !== 'quote_ready') throw new ConflictError('Work has already started — contact Housy support to cancel');
+      p.status = 'cancelled';
+      p.cancelReason = typeof a.reason === 'string' ? a.reason.trim().slice(0, 300) || undefined : undefined;
+      log(p.quote ? 'You declined the quote and cancelled the project' : 'You cancelled the project');
     } else if (a.action === 'accept_quote') {
       if (p.status !== 'quote_ready' || !p.quote) throw new ConflictError('No quote to accept');
       const q = p.quote;
@@ -139,6 +183,10 @@ export function act(id: string, a: Action, owner: string) {
         m.status = 'in_progress'; log(`${m.pro.name} started: ${m.name}`);
       } else if (a.action === 'submit') {
         if (m.status !== 'in_progress') throw new ConflictError('Milestone is not in progress');
+        // An owner who can't visit the site is asked to pay on the strength of this evidence, so it is mandatory.
+        if (!(p.photos ?? []).some((ph) => ph.milestoneId === m.id)) throw new ConflictError('Add at least one site photo as proof of work');
+        const note = 'note' in a && typeof a.note === 'string' ? a.note.trim().slice(0, 500) : '';
+        m.crewNote = note || undefined;
         m.status = 'in_review'; log(`${m.pro.name} submitted for your review: ${m.name}`);
       } else {
         if (m.status !== 'in_review') throw new ConflictError('Nothing to approve yet');
@@ -148,5 +196,23 @@ export function act(id: string, a: Action, owner: string) {
       m.updatedAt = now();
     }
     return p;
+  });
+}
+
+// Attach a proof-of-work photo to an in-progress milestone. File and metadata are written together under the store lock.
+export function addPhoto(id: string, owner: string, milestoneId: string, buf: Buffer, ext: ImageExt, caption?: string) {
+  return tx(async (all) => {
+    const p = all.find((x) => x.id === id && x.owner === owner);
+    if (!p) throw new NotFoundError('Project not found');
+    if (p.status !== 'active') throw new ConflictError('Project is not active');
+    const m = p.milestones.find((x) => x.id === milestoneId);
+    if (!m) throw new ValidationError('Milestone not found');
+    if (m.status !== 'in_progress') throw new ConflictError('Photos can only be added while the work is in progress');
+    p.photos ??= [];
+    if (p.photos.filter((x) => x.milestoneId === m.id).length >= MAX_PHOTOS_PER_MILESTONE) throw new ConflictError(`At most ${MAX_PHOTOS_PER_MILESTONE} photos per milestone`);
+    const photo: Photo = { id: await saveImage(p.id, buf, ext), milestoneId: m.id, ext, caption: caption?.trim().slice(0, 120) || undefined, at: now() };
+    p.photos.push(photo);
+    p.timeline.unshift({ at: photo.at, text: `${m.pro.name} added a photo to "${m.name}"` });
+    return photo;
   });
 }

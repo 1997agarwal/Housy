@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 import type { Profile } from './profile-shared';
-export interface User { phone: string; name: string; onboarded: boolean; profile: Profile | null }
+export interface User { phone: string; name: string; onboarded: boolean; profile: Profile | null; isAdmin?: boolean }
 // user: undefined = still loading, null = logged out.
 const Ctx = createContext<{ user: User | null | undefined; refresh: () => Promise<void>; logout: () => Promise<void> }>({
   user: undefined, refresh: async () => {}, logout: async () => {},
