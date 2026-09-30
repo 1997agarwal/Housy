@@ -1,6 +1,7 @@
-import { createHash, createHmac, randomInt, timingSafeEqual } from 'crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { cookies } from 'next/headers';
-import { withJson } from './kv';
+import { readJson, withJson } from './kv';
+import { rateLimit } from './ratelimit';
 import { normalizePhone } from './phone';
 import { deliverOtp, type Delivery } from './sms';
 
@@ -47,43 +48,43 @@ export async function setSession(s: Session) {
 export async function clearSession() { (await cookies()).delete(COOKIE); }
 
 // ── OTP ──────────────────────────────────────────────────────────────
-interface OtpRec { hash: string; exp: number; attempts: number; sentAt: number }
+interface OtpRec { nonce: string; hash: string; exp: number; attempts: number; sentAt: number }
 type OtpStore = Record<string, OtpRec>;
 const hashCode = (phone: string, code: string) => createHash('sha256').update(`${secret()}|${phone}|${code}`).digest('hex');
-
-// Sliding-window limiter. Returns seconds to wait if any key is over its limit; otherwise records the hit and returns 0.
-async function rateLimit(checks: [key: string, limit: number][], windowMs: number): Promise<number> {
-  return withJson<Record<string, number[]>, number>('ratelimit', () => ({}), (store) => {
-    const now = Date.now();
-    for (const k of Object.keys(store)) { store[k] = store[k].filter((t) => now - t < windowMs); if (!store[k].length) delete store[k]; }
-    for (const [key, limit] of checks) {
-      const hits = store[key] ?? [];
-      if (hits.length >= limit) return Math.ceil((hits[0] + windowMs - now) / 1000);
-    }
-    for (const [key] of checks) (store[key] ??= []).push(now);
-    return 0;
-  });
-}
+// The code is derived from a stored random nonce, so a re-request inside the validity window can resend the SAME code.
+const deriveCode = (phone: string, nonce: string) => String(100000 + (createHmac('sha256', secret()).update(`otp|${phone}|${nonce}`).digest().readUInt32BE(0) % 900000));
 
 export async function requestOtp(rawPhone: unknown, ip = 'unknown'): Promise<Delivery> {
   const phone = normalizePhone(rawPhone);
   if (!phone) throw new AuthError('Enter a valid 10-digit Indian mobile number');
-  const wait0 = await rateLimit([[`ip:${ip}`, MAX_PER_IP_HOUR], [`phone:${phone}`, MAX_PER_PHONE_HOUR]], HOUR);
+  const wait0 = await rateLimit([[`ip:${ip}`, MAX_PER_IP_HOUR]], HOUR);
   if (wait0) throw new AuthError(`Too many code requests. Try again in ${Math.ceil(wait0 / 60)} min`, 429);
-  const code = String(randomInt(100000, 1000000));
-  const r = await withJson<OtpStore, { wait?: number }>('otp', () => ({}), (store) => {
+
+  // A still-valid code is re-sent, not replaced: otherwise anyone could invalidate a victim's real code (and reset its
+  // attempt counter) just by requesting another one for their number. Only genuinely NEW codes count against the
+  // per-phone hourly cap, so an attacker can't use it up to lock the owner out either.
+  const live = ((await readJson<OtpStore>('otp', {}))[phone]?.exp ?? 0) > Date.now();
+  if (!live) {
+    const wait1 = await rateLimit([[`phone:${phone}`, MAX_PER_PHONE_HOUR]], HOUR);
+    if (wait1) throw new AuthError(`Too many code requests for this number. Try again in ${Math.ceil(wait1 / 60)} min`, 429);
+  }
+
+  const r = await withJson<OtpStore, { wait?: number; code?: string; created?: boolean }>('otp', () => ({}), (store) => {
     const now = Date.now();
     for (const [p, v] of Object.entries(store)) if (v.exp < now) delete store[p]; // purge expired
     const prev = store[phone];
     if (prev && now - prev.sentAt < RESEND_MS) return { wait: Math.ceil((RESEND_MS - (now - prev.sentAt)) / 1000) };
-    store[phone] = { hash: hashCode(phone, code), exp: now + OTP_TTL_MS, attempts: 0, sentAt: now };
-    return {};
+    if (prev) { prev.sentAt = now; return { code: deriveCode(phone, prev.nonce), created: false }; }   // same code, same attempt count
+    const nonce = randomBytes(12).toString('hex');
+    const code = deriveCode(phone, nonce);
+    store[phone] = { nonce, hash: hashCode(phone, code), exp: now + OTP_TTL_MS, attempts: 0, sentAt: now };
+    return { code, created: true };
   });
   if (r.wait) throw new AuthError(`Please wait ${r.wait}s before requesting another code`, 429);
   try {
-    return await deliverOtp(phone, code);
+    return await deliverOtp(phone, r.code!);
   } catch (e) {
-    await withJson<OtpStore, void>('otp', () => ({}), (s) => { delete s[phone]; }); // don't leave a code nobody received
+    if (r.created) await withJson<OtpStore, void>('otp', () => ({}), (s) => { delete s[phone]; }); // don't leave a code nobody received
     throw e;
   }
 }

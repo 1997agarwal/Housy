@@ -22,14 +22,14 @@ const fromProfile = (p: Profile | null | undefined, name = '', city = 'bareilly'
 });
 
 // mode 'onboard' = two guided steps for new users; 'edit' = everything on one page.
-export function ProfileForm({ mode, defaultCity, onSaved }: { mode: 'onboard' | 'edit'; defaultCity?: string; onSaved: (p: Profile) => void }) {
+export function ProfileForm({ mode, defaultCity, onSaved, onEdit }: { mode: 'onboard' | 'edit'; defaultCity?: string; onSaved: (p: Profile) => void; onEdit?: () => void }) {
   const { user, refresh } = useAuth();
-  const { t, lang } = useT();
+  const { t, lang, setLang } = useT();
   const [d, setD] = useState<Draft>(() => fromProfile(user?.profile, user?.name, defaultCity));
   const [step, setStep] = useState(mode === 'onboard' ? 1 : 0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
+  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => { setD((x) => ({ ...x, [k]: v })); onEdit?.(); };
   const toggle = (g: Goal) => set('goals', d.goals.includes(g) ? d.goals.filter((x) => x !== g) : [...d.goals, g]);
 
   function next() {
@@ -44,6 +44,7 @@ export function ProfileForm({ mode, defaultCity, onSaved }: { mode: 'onboard' | 
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Could not save');
       await refresh();
+      if (j.profile.language === 'hi' || j.profile.language === 'en') setLang(j.profile.language);   // the language they just picked applies now, even if they toggled the header earlier
       onSaved(j.profile);
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
@@ -65,7 +66,7 @@ export function ProfileForm({ mode, defaultCity, onSaved }: { mode: 'onboard' | 
         <select id="plang" className={field} value={d.language} onChange={(e) => set('language', e.target.value)}>
           {Object.entries(LANGUAGES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <p className="mt-1 text-xs text-slate-500">We’re saving your preference now; the Hindi interface is coming.</p>
+        <p className="mt-1 text-xs text-slate-500">{t('onb.langHint')}</p>
       </div>
     </div>
   );

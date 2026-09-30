@@ -3,8 +3,9 @@
 import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getType, inr, phaseName } from '@/lib/catalog';
-import { useT } from '@/lib/i18n';
+import { cityName, typeTitle, useT } from '@/lib/i18n';
 import { visitSlots } from '@/lib/slots';
+import { formatIST } from '@/lib/time';
 import { cityOrDefault } from '@/lib/cities';
 import type { Milestone, Project } from '@/lib/projects';
 import { useAuth } from '@/lib/auth-context';
@@ -47,14 +48,16 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     }).catch(() => setError('Could not load project'));
   }, [id, user]);
 
-  const send = useCallback(async (body: object) => {
+  // Resolves true only if the action succeeded, so forms clear their inputs on success and KEEP them on failure.
+  const send = useCallback(async (body: object): Promise<boolean> => {
     setBusy(true); setError('');
     try {
       const r = await fetch(`/api/projects/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || 'Action failed');
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Action failed — please try again');
       setP(d);
-    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+      return true;
+    } catch (e) { setError((e as Error).message === 'Failed to fetch' ? 'Could not reach Housy — check your connection and try again' : (e as Error).message); return false; } finally { setBusy(false); }
   }, [id]);
 
   const reload = useCallback(async () => { const r = await fetch(`/api/projects/${id}`); if (r.ok) setP(await r.json()); }, [id]);
@@ -80,8 +83,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{p.id} · {cityOrDefault(p.city).name}{p.style ? ` · ${p.style} style` : ''}</p>
-      <h1 className="text-3xl font-black tracking-tight text-slate-900">{type.emoji} {type.title}</h1>
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{p.id} · {cityName(cityOrDefault(p.city), lang)}{p.style ? ` · ${p.style} style` : ''}</p>
+      <h1 className="text-3xl font-black tracking-tight text-slate-900">{type.emoji} {typeTitle(type, lang)}</h1>
 
       {cancelled ? (
         <p className="mt-6 rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700">This project was cancelled{p.cancelReason ? ` — ${p.cancelReason}` : ''}. <Link href="/#services" className="text-[#E05A2B]">Plan a new one →</Link></p>
@@ -92,7 +95,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         ))}
       </ol>
       )}
-      {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{error}</p>}
+      {error && <p role="alert" className="sticky top-16 z-10 mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800 shadow-sm">{error}</p>}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-6">
@@ -108,7 +111,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           {p.status === 'visit_scheduled' && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="font-extrabold">{type.visitLabel} booked</h2>
-              <p className="mt-1 text-slate-600">{new Date(p.visit.slot).toLocaleString('en-IN', { dateStyle: 'full', timeStyle: 'short' })}</p>
+              <p className="mt-1 text-slate-600">{formatIST(p.visit.slot, lang === 'hi' ? 'hi-IN' : 'en-IN', { dateStyle: 'full', timeStyle: 'short' })}</p>
               <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm">
                 <b>{p.visit.expert.name}</b> · {p.visit.expert.role} · ⭐ {p.visit.expert.rating} ({p.visit.expert.reviews}) · Housy ID {p.visit.expert.housyId}
               </div>
@@ -211,7 +214,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                             <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                               <label className="block text-sm font-semibold text-slate-700" htmlFor={`fb-${m.id}`}>What should change? <span className="font-normal text-slate-500">(round {(m.revisions ?? 0) + 1} of {MAX_REVISIONS})</span></label>
                               <textarea id={`fb-${m.id}`} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder={isDesign(m) ? 'e.g. Prefer a warmer palette in the living room; add a TV unit' : 'e.g. Tile joints in the corner are uneven'} />
-                              <button className={`${btn} mt-2`} disabled={busy || feedback.trim().length < 5} onClick={async () => { await send({ action: 'request_changes', milestoneId: m.id, feedback }); setChanging(null); }}>Send to crew</button>
+                              <button className={`${btn} mt-2`} disabled={busy || feedback.trim().length < 5} onClick={async () => { if (await send({ action: 'request_changes', milestoneId: m.id, feedback })) setChanging(null); }}>Send to crew</button>
                             </div>
                           )}
                         </div>

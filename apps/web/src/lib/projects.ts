@@ -5,6 +5,8 @@ import { estimate, getType, STYLES, type Estimate, type Tier } from './catalog';
 import { proForTrade, visitExpert, type Pro } from './pros';
 import type { Trade } from './catalog';
 import { getCity } from './cities';
+import { formatIST } from './time';
+import { toNum } from './num';
 import { saveImage, type ImageExt } from './uploads';
 import { EXPENSE_CATEGORIES, PAY_METHODS, MAX_EXPENSES, type Expense, type ExpenseCategory, type PayMethod } from './expenses-shared';
 import { CHANGE_TRADES, MAX_PENDING_CHANGES, MAX_PHOTOS_PER_MILESTONE, MAX_REVISIONS } from './limits';
@@ -67,31 +69,44 @@ export interface CreateInput {
 export class ValidationError extends Error {}
 export class NotFoundError extends Error {}
 
-export function validateCreate(i: Partial<CreateInput>): CreateInput {
-  const type = i.typeId && getType(i.typeId);
+// Treats every field as untrusted: wrong types, NaN/Infinity, absurd sizes and past dates are rejected with a 400
+// instead of reaching the pricing maths or crashing with a 500.
+export function validateCreate(raw: unknown): CreateInput {
+  const i = (raw !== null && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  const type = getType(str(i.typeId));
   if (!type) throw new ValidationError('Unknown project type');
-  const city = getCity(i.city);
+  const city = getCity(str(i.city));
   if (!city) throw new ValidationError('Choose a city');
   if (city.status !== 'live') throw new ValidationError(`We are not live in ${city.name} yet — join the waitlist and we will tell you first`);
-  if (!i.name?.trim()) throw new ValidationError('Name is required');
+  const name = str(i.name).trim().slice(0, 60);
+  if (!name) throw new ValidationError('Name is required');
   const sitePhone = normalizePhone(i.phone);
   if (!sitePhone) throw new ValidationError('Enter a valid 10-digit Indian mobile number');
-  if (!i.slot || Number.isNaN(Date.parse(i.slot))) throw new ValidationError('Pick a visit slot');
-  if (!i.tier || !['economy', 'standard', 'premium'].includes(i.tier)) throw new ValidationError('Invalid quality tier');
-  const area = Number(i.area);
+  const slotMs = Date.parse(str(i.slot));
+  if (Number.isNaN(slotMs)) throw new ValidationError('Pick a visit slot');
+  if (slotMs <= Date.now()) throw new ValidationError('That visit time has already passed — pick a new slot');
+  if (slotMs > Date.now() + MAX_SLOT_DAYS * 864e5) throw new ValidationError('Pick a slot within the next two months');
+  const tier = str(i.tier);
+  if (!['economy', 'standard', 'premium'].includes(tier)) throw new ValidationError('Invalid quality tier');
+  const area = toNum(i.area);
   if (!(area >= 5 && area <= 20000)) throw new ValidationError('Area looks wrong');
+
+  let drainFt: number | undefined;
+  if (i.drainFt !== undefined && i.drainFt !== null && i.drainFt !== '') {
+    drainFt = toNum(i.drainFt);
+    if (!(drainFt >= 0 && drainFt <= 500)) throw new ValidationError('Drain distance looks wrong');   // also rejects NaN/Infinity and array/boolean coercions
+  }
   let style: string | undefined;
   if (type.interiors) {
-    if (!i.style || !(STYLES as readonly string[]).includes(i.style)) throw new ValidationError('Pick a design style');
-    style = i.style;
+    style = str(i.style);
+    if (!(STYLES as readonly string[]).includes(style)) throw new ValidationError('Pick a design style');
   }
   let rooms: string[] | undefined, finishes: Record<string, string> | undefined;
-  if (type.rooms) {
-    if (Array.isArray(i.rooms)) {
-      rooms = [...new Set(i.rooms)] as string[];
-      if (rooms.length === 0) throw new ValidationError('Pick at least one room');
-      if (rooms.some((r) => !type.rooms!.some((d) => d.id === r))) throw new ValidationError('Unknown room selected');
-    }
+  if (type.rooms && Array.isArray(i.rooms)) {
+    rooms = [...new Set(i.rooms)] as string[];
+    if (rooms.length === 0) throw new ValidationError('Pick at least one room');
+    if (rooms.some((r) => typeof r !== 'string' || !type.rooms!.some((d) => d.id === r))) throw new ValidationError('Unknown room selected');
   }
   if (type.finishes && i.finishes && typeof i.finishes === 'object') {
     finishes = {};
@@ -102,10 +117,23 @@ export function validateCreate(i: Partial<CreateInput>): CreateInput {
       finishes[f.id] = v;
     }
   }
-  const pv = i.propertyValueLakh == null || (i.propertyValueLakh as unknown) === '' ? undefined : Number(i.propertyValueLakh);
-  if (pv !== undefined && !(pv >= 1 && pv <= 1_000_000)) throw new ValidationError('Property value looks wrong');
-  return { ...(i as CreateInput), style, rooms, finishes, propertyValueLakh: pv, notes: i.notes?.slice(0, 500), city: city.id, phone: sitePhone, area, drainFt: i.drainFt == null ? undefined : Math.max(0, Number(i.drainFt)) };
+  let pv: number | undefined;
+  if (i.propertyValueLakh !== undefined && i.propertyValueLakh !== null && i.propertyValueLakh !== '') {
+    pv = toNum(i.propertyValueLakh);
+    if (!(pv >= 1 && pv <= 1_000_000)) throw new ValidationError('Property value looks wrong');
+  }
+  return {
+    typeId: type.id, city: city.id, area, tier: tier as Tier, drainFt, style, rooms, finishes, propertyValueLakh: pv,
+    notes: str(i.notes).trim().slice(0, 500) || undefined, name, phone: sitePhone, slot: new Date(slotMs).toISOString(),
+  };
 }
+
+// Quotes and milestones round to a step that scales with the job, so a ₹1,300 painting job isn't rounded to ₹1,500
+// (above its own estimate range) or split into ₹0 milestones.
+const roundTo = (n: number, step: number) => Math.max(step, Math.round(n / step) * step);
+const quoteStep = (total: number) => (total < 20_000 ? 50 : 500);
+const moneyStep = (total: number) => (total < 20_000 ? 50 : 100);
+const MAX_SLOT_DAYS = 60;
 
 const now = () => new Date().toISOString();
 const newId = () => 'HSY-' + Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -121,7 +149,7 @@ export function createProject(input: CreateInput, owner: string) {
       estimate: est,
       visit: { slot: input.slot, fee: type.visitFee, expert: visitExpert(input.city, type.expert ?? (type.needsEngineer ? 'engineer' : 'mason')), done: false },
       milestones: [], paid: 0,
-      timeline: [{ at: now(), text: `${type.visitLabel} booked for ${new Date(input.slot).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` }],
+      timeline: [{ at: now(), text: `${type.visitLabel} booked for ${formatIST(input.slot)}` }],
     };
     all.push(p);
     return p;
@@ -167,12 +195,13 @@ export function act(id: string, a: Action, owner: string) {
       const type = getType(p.typeId)!;
       const num = (v: unknown, min: number, max: number, label: string) => {
         if (v === undefined || v === null || v === '') return undefined;
-        const n = Number(v);
+        const n = toNum(v);
         if (!(n >= min && n <= max)) throw new ValidationError(`${label} looks wrong`);
         return n;
       };
       const area = num(a.measuredArea, 5, 20000, 'Measured area') ?? p.area;
       const drain = type.askDrain ? (num(a.measuredDrainFt, 0, 500, 'Measured drain distance') ?? p.drainFt) : p.drainFt;
+      const drainMeasured = !!type.askDrain && a.measuredDrainFt !== undefined && a.measuredDrainFt !== null && (a.measuredDrainFt as unknown) !== '';
       const before = p.estimate.total;
       const changed = area !== p.area || drain !== p.drainFt;
       const findings: string[] = [];
@@ -183,25 +212,26 @@ export function act(id: string, a: Action, owner: string) {
         if (area !== p.area) findings.push(`Measured ${area} sq ft on site (you estimated ${p.area}${pct ? `, ${pct > 0 ? '+' : ''}${pct}%` : ''}).`);
         if (drain !== p.drainFt) findings.push(`Measured drain/septic distance: ${drain} ft (you estimated ${p.drainFt ?? 'unknown'}).`);
         p.area = area; p.drainFt = drain;
-        p.estimate = estimate({ typeId: p.typeId, city: p.city, area, tier: p.tier, drainFt: drain, rooms: p.rooms, finishes: p.finishes });
       } else {
         findings.push(`Measured on site: ${p.area} sq ft — matches your estimate.`);
       }
+      // Always re-estimate: a measured drain distance of 0 is a real value, not "unknown".
+      p.estimate = estimate({ typeId: p.typeId, city: p.city, area, tier: p.tier, drainFt: drain, drainMeasured, rooms: p.rooms, finishes: p.finishes });
       findings.push(...p.estimate.flags.filter((f) => f.level !== 'green').map((f) => f.text));
       const note = typeof a.note === 'string' ? a.note.trim().slice(0, 500) : '';
       if (note) findings.push(`Expert note: ${note}`);
       findings.push('Fixed price: only changes if you change the scope in writing.');
-      const total = Math.round(p.estimate.total / 500) * 500;
+      const total = roundTo(p.estimate.total, quoteStep(p.estimate.total));
       p.visit.done = true;
       p.status = 'quote_ready';
-      p.quote = { total, advance: Math.round((total * ADVANCE_PCT) / 100) * 100, findings, issuedAt: now(), accepted: false };
-      log(`${p.visit.expert.name} completed the ${type.visitLabel.toLowerCase()} and issued a fixed quote of ₹${total.toLocaleString('en-IN')}${changed ? ` (estimate at booking: ₹${(Math.round(before / 500) * 500).toLocaleString('en-IN')})` : ''}`);
+      p.quote = { total, advance: roundTo(total * ADVANCE_PCT, moneyStep(total)), findings, issuedAt: now(), accepted: false };
+      log(`${p.visit.expert.name} completed the ${type.visitLabel.toLowerCase()} and issued a fixed quote of ₹${total.toLocaleString('en-IN')}${changed ? ` (estimate at booking: ₹${roundTo(before, quoteStep(before)).toLocaleString('en-IN')})` : ''}`);
     } else if (a.action === 'reschedule') {
       if (p.status !== 'visit_scheduled') throw new ConflictError('The visit has already happened');
-      const t = Date.parse(a.slot);
-      if (Number.isNaN(t) || t < Date.now()) throw new ValidationError('Pick a future time slot');
+      const t = typeof a.slot === 'string' ? Date.parse(a.slot) : NaN;
+      if (Number.isNaN(t) || t < Date.now() || t > Date.now() + MAX_SLOT_DAYS * 864e5) throw new ValidationError('Pick a future time slot');
       p.visit.slot = new Date(t).toISOString();
-      log(`Visit rescheduled to ${new Date(t).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}`);
+      log(`Visit rescheduled to ${formatIST(t)}`);
     } else if (a.action === 'cancel') {
       if (p.status !== 'visit_scheduled' && p.status !== 'quote_ready') throw new ConflictError('Work has already started — contact Housy support to cancel');
       p.status = 'cancelled';
@@ -215,7 +245,7 @@ export function act(id: string, a: Action, owner: string) {
       let assigned = 0;
       p.milestones = p.estimate.phases.map((ph, i, arr) => {
         // Last milestone absorbs rounding so amounts always sum to the quote.
-        const amt = i === arr.length - 1 ? remaining - assigned : Math.round((remaining * ph.subtotal) / phaseTotal / 100) * 100;
+        const amt = i === arr.length - 1 ? remaining - assigned : Math.round((remaining * ph.subtotal) / phaseTotal / moneyStep(q.total)) * moneyStep(q.total);
         assigned += amt;
         return { id: `${p.id}-M${i + 1}`, phaseId: ph.id, name: ph.name, days: ph.days, amount: amt, status: 'upcoming' as const, pro: proForTrade(p.city, ph.trade) };
       });
@@ -225,10 +255,12 @@ export function act(id: string, a: Action, owner: string) {
       if (p.status === 'cancelled') throw new ConflictError('This project was cancelled');
       if (!Object.prototype.hasOwnProperty.call(EXPENSE_CATEGORIES, a.category)) throw new ValidationError('Choose a category');
       if (!Object.prototype.hasOwnProperty.call(PAY_METHODS, a.method)) throw new ValidationError('Choose how you paid');
-      const amount = Number(a.amount);
+      const amount = toNum(a.amount);
       if (!(amount >= 1 && amount <= 100_000_000)) throw new ValidationError('Amount looks wrong');
-      const t = Date.parse(a.date);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(a.date)) || Number.isNaN(t) || t < Date.parse('2000-01-01') || t > Date.now() + 864e5) throw new ValidationError('Pick a valid date (not in the future)');
+      // Must be a real calendar date: "2026-02-31" parses in Node (rolling over to March) but must not be stored as typed.
+      const ds = typeof a.date === 'string' ? a.date : '';
+      const t = /^\d{4}-\d{2}-\d{2}$/.test(ds) ? Date.parse(`${ds}T00:00:00Z`) : NaN;
+      if (Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== ds || t < Date.parse('2000-01-01') || t > Date.now() + 864e5) throw new ValidationError('Pick a valid date (not in the future)');
       if ((p.expenses ?? []).length >= MAX_EXPENSES) throw new ConflictError(`You can log up to ${MAX_EXPENSES} expenses per project`);
       const note = typeof a.note === 'string' ? a.note.trim().slice(0, 120) : '';
       (p.expenses ??= []).push({ id: 'E' + randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase(), category: a.category as ExpenseCategory, amount: Math.round(amount * 100) / 100, date: a.date, method: a.method as PayMethod, note: note || undefined, createdAt: now() });
@@ -240,7 +272,7 @@ export function act(id: string, a: Action, owner: string) {
     } else if (a.action === 'set_budget') {
       if (a.budget === null) { p.budget = undefined; log('You removed your budget'); }
       else {
-        const b = Number(a.budget);
+        const b = toNum(a.budget);
         if (!(b >= 1000 && b <= 1_000_000_000)) throw new ValidationError('Budget looks wrong');
         p.budget = Math.round(b); log(`You set your budget to ₹${p.budget.toLocaleString('en-IN')}`);
       }
@@ -258,7 +290,7 @@ export function act(id: string, a: Action, owner: string) {
       const c = p.changes?.find((x) => x.id === a.changeId);
       if (!c) throw new ValidationError('Change not found');
       if (c.status !== 'requested') throw new ConflictError('This change has already been priced');
-      const amount = Number(a.amount), days = a.days === undefined ? 1 : Number(a.days);
+      const amount = toNum(a.amount), days = a.days === undefined ? 1 : toNum(a.days);
       if (!(amount >= 500 && amount <= (p.quote?.total ?? 0))) throw new ValidationError('Price looks wrong');
       if (!(days >= 0 && days <= 90)) throw new ValidationError('Days looks wrong');
       c.amount = Math.round(amount / 50) * 50; c.days = Math.round(days); c.status = 'quoted'; c.updatedAt = now();
@@ -327,7 +359,10 @@ export function addPhoto(id: string, owner: string, milestoneId: string, buf: Bu
     if (!m) throw new ValidationError('Milestone not found');
     if (m.status !== 'in_progress') throw new ConflictError('Photos can only be added while the work is in progress');
     p.photos ??= [];
-    if (p.photos.filter((x) => x.milestoneId === m.id).length >= MAX_PHOTOS_PER_MILESTONE) throw new ConflictError(`At most ${MAX_PHOTOS_PER_MILESTONE} photos per milestone`);
+    // The cap applies per review round: photos from before the owner's last change request don't count, otherwise a
+    // milestone that already has the maximum could never receive the fresh proof it now needs and would be stuck forever.
+    const thisRound = p.photos.filter((x) => x.milestoneId === m.id && (!m.feedbackAt || x.at > m.feedbackAt)).length;
+    if (thisRound >= MAX_PHOTOS_PER_MILESTONE) throw new ConflictError(`At most ${MAX_PHOTOS_PER_MILESTONE} photos per submission`);
     const photo: Photo = { id: await saveImage(p.id, buf, ext), milestoneId: m.id, ext, caption: caption?.trim().slice(0, 120) || undefined, at: now() };
     p.photos.push(photo);
     p.timeline.unshift({ at: photo.at, text: `${m.pro.name} added a photo to "${m.name}"` });

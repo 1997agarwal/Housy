@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ROOM_TYPES, TEMPLATES, LIMITS, PlanError, addRoom, area, carpetArea, drainRunFt, freeSpot, fromTemplate, gapFt, interiorRoomIds, overlap, overlappingIds, totalArea, validatePlan, type Room } from './plan-shared';
-import { getType } from './catalog';
+import { ROOM_TYPES, TEMPLATES, interiorHandoff, LIMITS, PlanError, addRoom, area, carpetArea, drainRunFt, freeSpot, fromTemplate, gapFt, interiorRoomIds, overlap, overlappingIds, totalArea, validatePlan, type Room } from './plan-shared';
+import { estimate, getType } from './catalog';
 
 const room = (o: Partial<Room> = {}): Room => ({ id: 'a', name: 'A', type: 'bedroom', x: 0, y: 0, w: 10, l: 10, ...o });
 
@@ -110,5 +110,42 @@ describe('templates start in a sensible state', () => {
       const p = fromTemplate(k);
       for (const bath of p.rooms.filter((r) => r.type === 'bathroom')) expect(drainRunFt(bath, p.septic!), k).toBeLessThanOrEqual(15);
     }
+  });
+});
+
+describe('interiors hand-off prices the plan once, not twice', () => {
+  const effectiveArea = (h: ReturnType<typeof interiorHandoff>) => {
+    const cat = getType('interiors-full')!.rooms!;
+    const share = h.rooms.reduce((a, id) => a + cat.find((r) => r.id === id)!.weight, 0) / cat.reduce((a, r) => a + r.weight, 0);
+    return h.area * share;
+  };
+  it('area × share equals the square footage actually drawn (was ~22% short for the 2 BHK template)', () => {
+    for (const k of Object.keys(TEMPLATES)) {
+      const rooms = fromTemplate(k).rooms;
+      const h = interiorHandoff(rooms);
+      const cat = getType('interiors-full')!.rooms!;
+      const share = h.rooms.reduce((a, id) => a + cat.find((r) => r.id === id)!.weight, 0) / cat.reduce((a, r) => a + r.weight, 0);
+      const drawn = rooms.filter((r) => !['bathroom', 'other'].includes(r.type)).reduce((a, r) => a + r.w * r.l, 0) - 0;   // rooms that map to interiors
+      const beds = rooms.filter((r) => r.type === 'bedroom').slice(3).reduce((a, r) => a + r.w * r.l, 0);
+      expect(Math.abs(effectiveArea(h) - (drawn - beds)), k).toBeLessThanOrEqual(0.5 / share + 1);   // only rounding of the whole-home number
+    }
+  });
+  it('a plan with only living + kitchen is not priced as 120 sq ft', () => {
+    const rooms: Room[] = [room({ id: 'a', type: 'living', w: 15, l: 12 }), room({ id: 'b', type: 'kitchen', x: 20, w: 10, l: 12 })];   // 180 + 120 = 300 sq ft
+    const h = interiorHandoff(rooms);
+    expect(h.rooms).toEqual(['living', 'kitchen']);
+    expect(Math.round(effectiveArea(h))).toBe(300);
+    const priced = estimate({ typeId: 'interiors-full', city: 'bareilly', area: h.area, tier: 'standard', rooms: h.rooms });
+    const naive = estimate({ typeId: 'interiors-full', city: 'bareilly', area: 300, tier: 'standard', rooms: h.rooms });   // the old, double-scaled hand-off
+    expect(priced.total).toBeGreaterThan(naive.total * 1.5);
+  });
+  it('counts what cannot be priced: 4th+ bedrooms and "other" rooms', () => {
+    const rooms = [...fromTemplate('3bhk').rooms, room({ id: 'x1', type: 'bedroom', x: 60 }), room({ id: 'x2', type: 'other', x: 80 })];
+    expect(interiorHandoff(rooms)).toMatchObject({ unpricedBedrooms: 1, unpricedOther: 1 });
+    expect(interiorHandoff(fromTemplate('2bhk').rooms)).toMatchObject({ unpricedBedrooms: 0, unpricedOther: 0 });
+  });
+  it('an empty or unmappable plan yields no area/rooms rather than NaN', () => {
+    expect(interiorHandoff([])).toMatchObject({ rooms: [], area: 0 });
+    expect(interiorHandoff([room({ type: 'bathroom' })])).toMatchObject({ rooms: [], area: 0 });
   });
 });

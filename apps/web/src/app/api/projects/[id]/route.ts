@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireSession } from '@/lib/auth';
-import { errorResponse } from '@/lib/http';
+import { errorResponse, readBody } from '@/lib/http';
 import { act, getProject, NotFoundError, type Action } from '@/lib/projects';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,7 @@ export async function GET(_: Request, { params }: Ctx) {
 export async function POST(req: Request, { params }: Ctx) {
   try {
     const s = await requireSession();
-    const body = (await req.json()) as Action;
+    const body = (await readBody(req)) as Action;
     if (!ACTIONS.includes(body?.action)) return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
     return NextResponse.json(await act((await params).id, body, s.phone));
   } catch (e) { return errorResponse(e); }

@@ -6,14 +6,31 @@ import { useAuth } from '@/lib/auth-context';
 import { LoginForm } from '@/lib/LoginForm';
 import { checkBathroom, fallInches, type Level } from '@/lib/advisor';
 import {
-  ROOM_TYPES, TEMPLATES, addRoom, area, carpetArea, drainRunFt, fromTemplate, gapFt, interiorRoomIds, overlappingIds, totalArea,
+  ROOM_TYPES, TEMPLATES, addRoom, area, carpetArea, drainRunFt, fromTemplate, gapFt, interiorHandoff, overlappingIds, totalArea,
   type Plan, type Point, type Room, type RoomType,
 } from '@/lib/plan-shared';
 
-const DRAFT = 'housy.plan.draft';
+const DRAFT = 'housy.plan.draft.v2';
+// A local draft belongs to whoever was signed in (or 'anon') and is timestamped, so one person's edits are never shown to
+// another on a shared device, and a newer unsaved draft is preferred over an older saved plan.
+type Draft = { owner: string; plan: Plan; at: string };
+const readDraft = (): Draft | null => { try { const d = JSON.parse(localStorage.getItem(DRAFT) ?? 'null'); return d && d.plan && Array.isArray(d.plan.rooms) ? d : null; } catch { return null; } };
 const snap = (n: number) => Math.max(0, Math.round(n * 2) / 2);
 const field = 'w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm';
 const btn = 'rounded-xl bg-[#E05A2B] px-4 py-2 text-sm font-bold text-white hover:bg-[#C44519] disabled:opacity-60';
+// A number input that lets you clear it and retype: it commits valid values while typing, clamps on blur, and reverts if left blank.
+function NumField({ label, value, min, max, onCommit }: { label: string; value: number; min: number; max: number; onCommit: (n: number) => void }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => setText(String(value)), [value]);
+  const parse = (t: string) => (t.trim() === '' ? NaN : Number(t));
+  return (
+    <label>{label}
+      <input type="number" min={min} max={max} step={0.5} className={field} value={text}
+        onChange={(e) => { setText(e.target.value); const n = parse(e.target.value); if (Number.isFinite(n) && n >= min && n <= max) onCommit(snap(n)); }}
+        onBlur={() => { const n = parse(text); if (Number.isFinite(n)) onCommit(Math.min(max, Math.max(min, snap(n)))); else setText(String(value)); }} />
+    </label>
+  );
+}
 const chipBtn = 'rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:border-slate-400';
 const LEVEL = { green: ['bg-emerald-600', 'GREEN'], amber: ['bg-amber-500', 'AMBER'], red: ['bg-red-600', 'RED'] } as const;
 
@@ -32,21 +49,36 @@ export default function MyHome() {
   const drag = useRef<{ kind: 'room' | 'septic'; id?: string; dx: number; dy: number } | null>(null);
   const loaded = useRef(false);
   const [dragging, setDragging] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Load: saved plan if logged in, otherwise a local draft.
+  const ownerRef = useRef('anon');
+  ownerRef.current = user?.phone ?? 'anon';
+
+  // Load: the saved plan, unless this user has a NEWER unsaved draft on this device (then offer that, marked unsaved).
+  // A draft made while signed out is adopted by whoever signs in next, but only if they have no saved plan yet.
   useEffect(() => {
     if (user === undefined || loaded.current) return;
     loaded.current = true;
     (async () => {
+      let server: Plan | null = null;
       try {
-        if (user) { const r = await fetch('/api/home-plan'); const d = await r.json(); if (d.plan) { setPlan(d.plan); return; } }
-        const draft = localStorage.getItem(DRAFT); if (draft) setPlan(JSON.parse(draft));
-      } catch { /* start empty */ }
+        if (user) { const r = await fetch('/api/home-plan'); if (!r.ok) throw new Error('load'); server = (await r.json()).plan ?? null; }
+      } catch { setError('Could not load your saved plan — you can keep editing and save when you are back online.'); }
+      const draft = readDraft();
+      const mine = draft && draft.owner === ownerRef.current ? draft : null;
+      const anon = user && !server && draft?.owner === 'anon' ? draft : null;
+      if (mine && (!server?.updatedAt || mine.at > server.updatedAt)) { setPlan(mine.plan); setDirty(true); }
+      else if (server) setPlan(server);
+      else if (anon) { setPlan(anon.plan); setDirty(true); }
     })();
   }, [user]);
 
   const update = useCallback((fn: (p: Plan) => Plan) => {
-    setPlan((p) => { const next = fn(p); try { localStorage.setItem(DRAFT, JSON.stringify(next)); } catch { /* storage unavailable */ } return next; });
+    setPlan((p) => {
+      const next = fn(p);
+      try { localStorage.setItem(DRAFT, JSON.stringify({ owner: ownerRef.current, plan: next, at: new Date().toISOString() } satisfies Draft)); } catch { /* storage unavailable */ }
+      return next;
+    });
     setDirty(true); setSaved('');
   }, []);
   const patchRoom = (id: string, patch: Partial<Room>) => update((p) => ({ ...p, rooms: p.rooms.map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
@@ -54,10 +86,15 @@ export default function MyHome() {
   async function save() {
     setError(''); setSaved('');
     if (!user) { setNeedLogin(true); return; }
-    const r = await fetch('/api/home-plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(plan) });
-    const d = await r.json();
-    if (!r.ok) { setError(d.error || 'Could not save'); return; }
-    setDirty(false); setSaved('Saved to your account');
+    setSaving(true);
+    try {
+      const r = await fetch('/api/home-plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(plan) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Could not save — please try again');
+      setDirty(false); setSaved('Saved to your account');
+      try { localStorage.removeItem(DRAFT); } catch { /* ignore */ }
+    } catch (e) { setError((e as Error).message === 'Failed to fetch' ? 'Could not reach Housy — your plan is kept as a draft on this device' : (e as Error).message); }
+    finally { setSaving(false); }
   }
 
   // ── canvas geometry ──
@@ -110,8 +147,9 @@ export default function MyHome() {
     return { drainFt, verdict: checkBathroom({ floor, drainFt, below: 'unsure', shaft, ventilation: window_ ? 'window' : 'none' }) };
   }, [target, plan.septic, plan.rooms, floor, window_]);
 
-  const interiorIds = interiorRoomIds(plan.rooms);
-  const setRoomsUrl = `/plan/interiors-full?area=${carpetArea(plan.rooms)}&rooms=${interiorIds.join(',')}`;
+  const handoff = useMemo(() => interiorHandoff(plan.rooms), [plan.rooms]);
+  const interiorIds = handoff.rooms;
+  const setRoomsUrl = `/plan/interiors-full?area=${handoff.area}&rooms=${interiorIds.join(',')}`;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -162,7 +200,7 @@ export default function MyHome() {
           {plan.rooms.length === 0 && <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-slate-600">Start with a template above, or add rooms one by one. You can drag to move and edit sizes on the right.</p>}
           {overlaps.size > 0 && <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">Some rooms overlap (shown in red). Drag them apart or fix their sizes.</p>}
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <button className={btn} onClick={save} disabled={plan.rooms.length === 0}>Save my plan</button>
+            <button className={btn} onClick={save} disabled={plan.rooms.length === 0 || saving}>{saving ? 'Saving…' : 'Save my plan'}</button>
             {dirty && !saved && <span className="text-sm text-slate-500">Unsaved changes (kept as a draft on this device)</span>}
             {saved && <span role="status" className="text-sm font-bold text-emerald-700">✔ {saved}</span>}
             {error && <span role="alert" className="text-sm font-bold text-red-700">{error}</span>}
@@ -183,7 +221,7 @@ export default function MyHome() {
                 <label className="col-span-2">Name<input className={field} maxLength={30} value={sel.name} onChange={(e) => patchRoom(sel.id, { name: e.target.value })} /></label>
                 <label className="col-span-2">Type<select className={field} value={sel.type} onChange={(e) => patchRoom(sel.id, { type: e.target.value as RoomType })}>{(Object.keys(ROOM_TYPES) as RoomType[]).map((t) => <option key={t} value={t}>{ROOM_TYPES[t].label}</option>)}</select></label>
                 {([['w', 'Width (ft)', 3, 60], ['l', 'Length (ft)', 3, 60], ['x', 'Left (ft)', 0, 200], ['y', 'Top (ft)', 0, 200]] as const).map(([k, label, min, max]) => (
-                  <label key={k}>{label}<input type="number" min={min} max={max} step={0.5} className={field} value={sel[k]} onChange={(e) => { const n = Number(e.target.value); if (Number.isFinite(n)) patchRoom(sel.id, { [k]: Math.min(max, Math.max(min, snap(n))) }); }} /></label>
+                  <NumField key={k} label={label} value={sel[k]} min={min} max={max} onCommit={(n) => patchRoom(sel.id, { [k]: n })} />
                 ))}
               </div>
               <p className="mt-2 text-sm text-slate-700">{area(sel)} sq ft</p>
@@ -216,7 +254,8 @@ export default function MyHome() {
           {interiorIds.length > 0 && (
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <h2 className="font-extrabold">Interiors</h2>
-              <p className="mt-1 text-sm text-slate-700">Design {interiorIds.length} rooms ({carpetArea(plan.rooms)} sq ft carpet) straight from your plan.</p>
+              <p className="mt-1 text-sm text-slate-700">Design {interiorIds.length} rooms straight from your plan.</p>
+              {(handoff.unpricedBedrooms > 0 || handoff.unpricedOther > 0) && <p className="mt-1 text-xs text-amber-800">Note: interiors pricing covers up to 3 bedrooms and the standard room types — {handoff.unpricedBedrooms > 0 ? `${handoff.unpricedBedrooms} extra bedroom(s)` : ''}{handoff.unpricedBedrooms > 0 && handoff.unpricedOther > 0 ? ' and ' : ''}{handoff.unpricedOther > 0 ? `${handoff.unpricedOther} “Other” room(s)` : ''} won’t be included; your designer will add them at the consultation.</p>}
               <Link href={setRoomsUrl} className="mt-2 inline-block font-bold text-[#E05A2B]">Start interiors with this plan →</Link>
             </div>
           )}

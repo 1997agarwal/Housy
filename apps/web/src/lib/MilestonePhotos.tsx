@@ -51,7 +51,7 @@ export function PhotoUploader({ projectId, milestoneId, count, max, onAdded, kin
     <div className="mt-2">
       <label className={`inline-block cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-700 hover:border-slate-400 ${busy || count >= max ? 'pointer-events-none opacity-50' : ''}`}>
         {busy ? 'Uploading…' : `${kind === 'design' ? '🖼️ Add design render' : '📷 Add site photo'} (${count}/${max})`}
-        <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" onChange={pick} disabled={busy || count >= max} />
+        <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={pick} disabled={busy || count >= max} />
       </label>
       <input className="ml-2 w-56 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" placeholder={kind === 'design' ? 'Caption, e.g. Living room – view 1' : 'Caption (optional)'} value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={120} aria-label="Photo caption" />
       {error && <p role="alert" className="mt-1 text-sm font-semibold text-red-700">{error}</p>}

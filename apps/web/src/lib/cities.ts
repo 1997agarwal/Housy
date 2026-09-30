@@ -28,8 +28,9 @@ export const CITIES: City[] = [
 ];
 
 export const DEFAULT_CITY = 'bareilly';
-export const getCity = (idOrName?: string | null) => {
-  const k = (idOrName ?? '').toLowerCase();
+export const getCity = (idOrName?: unknown) => {
+  if (typeof idOrName !== 'string') return undefined;      // request bodies are untrusted: a number here must not crash
+  const k = idOrName.toLowerCase();
   return CITIES.find((c) => c.id === k || c.name.toLowerCase() === k);
 };
 export const cityOrDefault = (idOrName?: string | null) => getCity(idOrName) ?? getCity(DEFAULT_CITY)!;

@@ -298,7 +298,7 @@ PROJECT_TYPES.sort((a, b) => ORDER.indexOf(a.category) - ORDER.indexOf(b.categor
 
 export const getType = (id: string) => PROJECT_TYPES.find((t) => t.id === id);
 
-export interface EstimateInput { typeId: string; city: string; area: number; tier: Tier; drainFt?: number; rooms?: string[]; finishes?: Record<string, string> }
+export interface EstimateInput { typeId: string; city: string; area: number; tier: Tier; drainFt?: number; rooms?: string[]; finishes?: Record<string, string>; drainMeasured?: boolean }
 export interface EstimatePhase {
   id: string; name: string; trade: Trade; days: number;
   labor: number; material: number; subtotal: number;
@@ -314,17 +314,32 @@ export interface Estimate {
 const round50 = (n: number) => Math.round(n / 50) * 50;
 export const CONTINGENCY = 0.15;
 
+// Split `total` across rooms by weight in ₹50 steps; the rounding remainder goes to the biggest room so the parts always
+// add up to the whole.
+function roomCosts(picked: RoomDef[], total: number) {
+  const w = picked.reduce((a, r) => a + r.weight, 0);
+  const costs = picked.map((r) => ({ id: r.id, name: r.name, cost: round50((total * r.weight) / w) }));
+  const diff = total - costs.reduce((a, c) => a + c.cost, 0);
+  if (diff !== 0) {
+    const biggest = costs.reduce((m, c) => (c.cost > m.cost ? c : m), costs[0]);
+    biggest.cost += diff;
+  }
+  return costs;
+}
+
 export function estimate(input: EstimateInput): Estimate {
   const type = getType(input.typeId);
   if (!type) throw new Error(`Unknown project type: ${input.typeId}`);
   const cityMult = getCity(input.city)?.mult ?? 1;
   const tierMult = TIERS[input.tier].mult;
-  const drain = Math.max(0, input.drainFt ?? 0);
+  // Inputs come from the browser too, so never let NaN/Infinity/absurd values flow into money maths.
+  const drain = Number.isFinite(input.drainFt) ? Math.min(500, Math.max(0, input.drainFt as number)) : 0;
   // Room scope: only the selected rooms are priced. Area-based items scale by the selected share of the whole-home job.
   const allRooms = type.rooms ?? [];
-  const picked = allRooms.length ? (input.rooms?.length ? allRooms.filter((r) => input.rooms!.includes(r.id)) : allRooms) : [];
+  const chosen = allRooms.length && input.rooms?.length ? allRooms.filter((r) => input.rooms!.includes(r.id)) : allRooms;
+  const picked = chosen.length ? chosen : allRooms;      // unknown ids fall back to the whole home rather than pricing as zero
   const share = allRooms.length ? picked.reduce((a, r) => a + r.weight, 0) / allRooms.reduce((a, r) => a + r.weight, 0) : 1;
-  const area = Math.max(1, input.area) * share;
+  const area = Math.max(1, Number.isFinite(input.area) ? Math.min(input.area, 20000) : 1) * share;
   const finishMult = (phaseId: string) => (type.finishes ?? [])
     .filter((f) => f.phaseId === phaseId)
     .reduce((m, f) => m * (f.options.find((o) => o.id === input.finishes?.[f.id])?.mult ?? 1), 1);
@@ -340,7 +355,7 @@ export function estimate(input: EstimateInput): Estimate {
     return {
       id: p.id, name: p.name, trade: p.trade,
       days: Math.max(1, Math.round(p.baseDays + (p.daysPerSqft ?? 0) * area)),
-      labor: round50(labor), material: round50(material), subtotal: round50(labor + material),
+      labor: round50(labor), material: round50(material), subtotal: round50(labor) + round50(material),
     };
   });
 
@@ -352,17 +367,17 @@ export function estimate(input: EstimateInput): Estimate {
   const flags: Estimate['flags'] = [];
   if (type.needsEngineer) flags.push({ level: 'red', text: 'Structural work involved — a licensed structural engineer must sign off before any demolition. This is built into the plan.', textHi: 'स्ट्रक्चरल काम शामिल है — किसी भी तोड़फोड़ से पहले लाइसेंस्ड स्ट्रक्चरल इंजीनियर की मंज़ूरी ज़रूरी है। यह प्लान में पहले से शामिल है।' });
   if (type.askDrain) {
-    if (drain > 25) flags.push({ level: 'amber', text: `Drain run of ${drain} ft is long — needs a 1:40 slope check and possibly an extra inspection chamber.`, textHi: `${drain} फ़ुट का ड्रेन रन लंबा है — 1:40 ढलान की जाँच और शायद अतिरिक्त इंस्पेक्शन चैंबर लगेगा।` });
-    else if (drain === 0) flags.push({ level: 'amber', text: 'Distance to the nearest drain/septic is unknown — the site visit will measure it; cost may change.', textHi: 'नज़दीकी नाली/सेप्टिक की दूरी पता नहीं — साइट विज़िट में नापी जाएगी; लागत बदल सकती है।' });
+    const fall = Math.round(((drain * 12) / 40) * 10) / 10;   // inches of fall needed at 1:40
+    if (drain > 15) flags.push({ level: 'amber', text: `Drain run of ${drain} ft needs about ${fall} in of fall at 1:40 — expect a raised floor or sunk slab, and possibly an extra inspection chamber.`, textHi: `${drain} फ़ुट के ड्रेन रन पर 1:40 ढलान से लगभग ${fall} इंच का उतार चाहिए — ऊँचा फ़र्श या सिंक्ड स्लैब, और शायद अतिरिक्त इंस्पेक्शन चैंबर लगेगा।` });
+    else if (drain === 0 && !input.drainMeasured) flags.push({ level: 'amber', text: 'Distance to the nearest drain/septic is unknown — the site visit will measure it; cost may change.', textHi: 'नज़दीकी नाली/सेप्टिक की दूरी पता नहीं — साइट विज़िट में नापी जाएगी; लागत बदल सकती है।' });
     else flags.push({ level: 'green', text: `Drain run of ${drain} ft is comfortably within a workable 1:40 slope.`, textHi: `${drain} फ़ुट का ड्रेन रन 1:40 की काम-लायक ढलान में आराम से आता है।` });
   }
   if (type.staticFlags) flags.push(...type.staticFlags);
   if (input.tier === 'premium') flags.push({ level: 'green', text: 'Premium tier: material lead-times can add 3–7 days.', textHi: 'प्रीमियम श्रेणी: सामान मिलने में 3–7 दिन अतिरिक्त लग सकते हैं।' });
 
-  const pickedWeight = picked.reduce((a, r) => a + r.weight, 0);
   return {
     phases, labor, material, contingency, total,
-    rooms: picked.length ? picked.map((r) => ({ id: r.id, name: r.name, cost: round50((total * r.weight) / pickedWeight) })) : undefined,
+    rooms: picked.length ? roomCosts(picked, total) : undefined,
     low: round50(total * 0.9), high: round50(total * 1.12),
     days: phases.reduce((a, p) => a + p.days, 0), flags,
   };

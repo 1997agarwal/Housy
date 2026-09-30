@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { LoadError } from '@/lib/LoadError';
 import { getType, inrShort } from '@/lib/catalog';
 import { ISSUE_TYPES } from '@/lib/issues-shared';
 import type { OpsIssue } from '@/lib/issues';
@@ -16,10 +17,12 @@ export default function Admin() {
   const { user } = useAuth();
   const [data, setData] = useState<Summary | null>(null);
   const [denied, setDenied] = useState(false);
+  const [loadErr, setLoadErr] = useState(false);
+  const [tick, setTick] = useState(0);
   const [issues, setIssues] = useState<OpsIssue[]>([]);
   const [text, setText] = useState<Record<string, string>>({});
   const [err, setErr] = useState('');
-  const loadIssues = () => fetch('/api/admin/issues').then(async (r) => r.ok && setIssues(await r.json()));
+  const loadIssues = () => fetch('/api/admin/issues').then(async (r) => r.ok && setIssues(await r.json())).catch(() => undefined);
   async function act(id: string, body: object) {
     setErr('');
     const r = await fetch(`/api/admin/issues/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -28,12 +31,16 @@ export default function Admin() {
 
   useEffect(() => {
     if (!user) return;
-    fetch('/api/admin').then(async (r) => (r.ok ? setData(await r.json()) : setDenied(true)));
+    setLoadErr(false);
+    fetch('/api/admin')
+      .then(async (r) => { if (r.ok) setData(await r.json()); else if (r.status === 401 || r.status === 403) setDenied(true); else throw new Error(String(r.status)); })
+      .catch(() => setLoadErr(true));
     loadIssues();
-  }, [user]);
+  }, [user, tick]);
 
   if (user === undefined) return <div className="mx-auto max-w-5xl px-4 py-10 text-slate-500">Loading…</div>;
   if (!user || denied) return <div className="mx-auto max-w-md px-4 py-16 text-center"><h1 className="text-xl font-black">Not authorised</h1><p className="mt-1 text-slate-600">This page is for Housy operations.</p></div>;
+  if (loadErr) return <div className="mx-auto max-w-5xl px-4 py-10"><LoadError message="Couldn’t load the operations data." onRetry={() => setTick((n) => n + 1)} /></div>;
   if (!data) return <div className="mx-auto max-w-5xl px-4 py-10 text-slate-500">Loading…</div>;
 
   return (

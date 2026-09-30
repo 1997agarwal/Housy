@@ -1,3 +1,5 @@
+import { toNum } from './num';
+import { getType } from './catalog';
 // Home plan: rooms as rectangles on a foot grid + a septic/drain point. Pure & browser-safe.
 
 export const ROOM_TYPES = {
@@ -66,6 +68,25 @@ export function interiorRoomIds(rooms: Room[]): string[] {
   return ids;
 }
 
+// What "Start interiors from my plan" should send. The interiors estimator takes a WHOLE-HOME carpet area and scales it by
+// the share of rooms selected, so sending the plan's own (already partial) area would shrink the price twice.
+// Instead we back-solve the whole-home area so that area × share equals the square footage actually drawn.
+export function interiorHandoff(rooms: Room[]): { rooms: string[]; area: number; unpricedBedrooms: number; unpricedOther: number } {
+  const ids = interiorRoomIds(rooms);
+  const beds = rooms.filter((r) => r.type === 'bedroom');
+  const sum = (t: RoomType) => rooms.filter((r) => r.type === t).reduce((a, r) => a + r.w * r.l, 0);
+  const bySlot: Record<string, number> = {
+    living: sum('living'), kitchen: sum('kitchen'), dining: sum('dining'), study: sum('study'), pooja: sum('pooja'), balcony: sum('balcony'),
+    master: beds[0] ? beds[0].w * beds[0].l : 0, bedroom2: beds[1] ? beds[1].w * beds[1].l : 0, kids: beds[2] ? beds[2].w * beds[2].l : 0,
+  };
+  const mapped = ids.reduce((a, id) => a + (bySlot[id] ?? 0), 0);
+  const catalog = getType('interiors-full')!.rooms!;
+  const total = catalog.reduce((a, r) => a + r.weight, 0);
+  const share = ids.reduce((a, id) => a + (catalog.find((r) => r.id === id)?.weight ?? 0), 0) / total;
+  const area = share > 0 ? Math.min(20000, Math.max(5, Math.round(mapped / share))) : 0;
+  return { rooms: ids, area, unpricedBedrooms: Math.max(0, beds.length - 3), unpricedOther: rooms.filter((r) => r.type === 'other').length };
+}
+
 export function newRoomId(rooms: Room[]): string {
   let n = rooms.length + 1;
   while (rooms.some((r) => r.id === `r${n}`)) n++;
@@ -113,8 +134,8 @@ export function validatePlan(raw: any): Plan {
   if (raw.rooms.length > LIMITS.maxRooms) throw new PlanError(`A plan can have at most ${LIMITS.maxRooms} rooms`);
   const ids = new Set<string>();
   const num = (v: unknown, min: number, max: number, what: string) => {
-    const n = Number(v);
-    if (typeof v === 'boolean' || v === null || v === '' || !Number.isFinite(n) || n < min || n > max) throw new PlanError(`${what} must be between ${min} and ${max}`);
+    const n = toNum(v);
+    if (!Number.isFinite(n) || n < min || n > max) throw new PlanError(`${what} must be between ${min} and ${max}`);
     return snap(n);
   };
   const rooms: Room[] = raw.rooms.map((r: any) => {

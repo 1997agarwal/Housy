@@ -40,3 +40,13 @@ describe('profile storage', () => {
     expect(await getProfile('9123456789')).toBeNull();
   });
 });
+
+describe('profile numbers are strictly parsed', () => {
+  it('rejects array/boolean coercions for area and value (Number([100]) === 100)', () => {
+    for (const bad of [[100], true, {}]) {
+      expect(() => validateProfile({ ...good, propertyAreaSqft: bad })).toThrow(ProfileError);
+      expect(() => validateProfile({ ...good, propertyValueLakh: bad })).toThrow(ProfileError);
+    }
+    expect(validateProfile({ ...good, propertyAreaSqft: '  ' }).propertyAreaSqft).toBeUndefined();   // blank means "not given"
+  });
+});

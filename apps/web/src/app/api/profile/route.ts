@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireSession, setSession } from '@/lib/auth';
-import { errorResponse } from '@/lib/http';
+import { errorResponse, readBody } from '@/lib/http';
 import { getProfile, saveProfile } from '@/lib/profile';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export async function GET() {
 export async function PUT(req: Request) {
   try {
     const s = await requireSession();
-    const profile = await saveProfile(s.phone, await req.json());
+    const profile = await saveProfile(s.phone, await readBody(req));
     await setSession({ phone: s.phone, name: profile.name }); // keep the cookie's display name in step with the profile
     return NextResponse.json({ profile });
   } catch (e) { return errorResponse(e); }

@@ -7,11 +7,12 @@ export interface Issue {
   id: string; projectId: string; owner: string; milestoneId?: string; type: IssueType; status: IssueStatus;
   messages: IssueMessage[]; resolution?: string; createdAt: string; updatedAt: string;
 }
-export type OwnerIssue = Issue & { escalated: boolean };
+// What leaves the server: never the raw owner phone (ops sees only a masked one via ownerMasked).
+export type OwnerIssue = Omit<Issue, 'owner'> & { escalated: boolean };
 
 // Unresolved for too long → flagged for ops. Computed, so it can never get stale.
 export const isEscalated = (i: Issue, now = Date.now()) => i.status !== 'resolved' && now - Date.parse(i.createdAt) > ESCALATE_AFTER_HOURS * 3_600_000;
-const view = (i: Issue): OwnerIssue => ({ ...i, escalated: isEscalated(i) });
+const view = (i: Issue): OwnerIssue => { const copy: Partial<Issue> = { ...i }; delete copy.owner; return { ...(copy as Omit<Issue, 'owner'>), escalated: isEscalated(i) }; };
 const clean = (v: unknown, min: number, max: number, what: string) => {
   const t = typeof v === 'string' ? v.trim() : '';
   if (t.length < min) throw new ValidationError(`${what} must be at least ${min} characters`);

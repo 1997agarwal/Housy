@@ -3,21 +3,21 @@
 import { useMemo, useState } from 'react';
 import { EXPENSE_CATEGORIES, PAY_METHODS, expensesCsv, summarize, type ExpenseCategory, type PayMethod } from './expenses-shared';
 import { inr } from './catalog';
+import { todayIST } from './time';
 import type { Project } from './projects';
 
 const field = 'w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm';
 const btn = 'rounded-xl bg-[#E05A2B] px-4 py-2 text-sm font-bold text-white hover:bg-[#C44519] disabled:opacity-60';
-const today = () => new Date().toISOString().slice(0, 10);
 const BAR = { none: 'bg-slate-400', ok: 'bg-emerald-500', watch: 'bg-amber-500', over: 'bg-red-600' } as const;
 
-export function ExpensePanel({ p, send, busy }: { p: Project; send: (body: object) => Promise<void>; busy: boolean }) {
+export function ExpensePanel({ p, send, busy }: { p: Project; send: (body: object) => Promise<boolean>; busy: boolean }) {
   const expenses = useMemo(() => p.expenses ?? [], [p.expenses]);
   const s = useMemo(() => summarize({ budget: p.budget, paid: p.paid, quoteTotal: p.quote?.total, accepted: p.quote?.accepted, expenses }), [p.budget, p.paid, p.quote, expenses]);
   const [budget, setBudget] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>('materials');
   const [method, setMethod] = useState<PayMethod>('upi');
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(today());
+  const [date, setDate] = useState(todayIST());
   const [note, setNote] = useState('');
   const max = Math.max(1, ...s.categories.map((c) => c.amount));
 
@@ -47,7 +47,7 @@ export function ExpensePanel({ p, send, busy }: { p: Project; send: (body: objec
           ) : (
             <div className="mt-1 flex gap-1">
               <input type="number" min={1000} className={field} placeholder="e.g. 800000" value={budget} onChange={(e) => setBudget(e.target.value)} aria-label="Set your budget in rupees" />
-              <button className="rounded-lg border border-slate-300 px-2 text-xs font-bold" disabled={busy || !(Number(budget) >= 1000)} onClick={async () => { await send({ action: 'set_budget', budget: Number(budget) }); setBudget(''); }}>Set</button>
+              <button className="rounded-lg border border-slate-300 px-2 text-xs font-bold" disabled={busy || !(Number(budget) >= 1000)} onClick={async () => { if (await send({ action: 'set_budget', budget: Number(budget) })) setBudget(''); }}>Set</button>
             </div>
           )}
         </div>
@@ -74,12 +74,12 @@ export function ExpensePanel({ p, send, busy }: { p: Project; send: (body: objec
         <div className="mt-2 grid gap-2 sm:grid-cols-4">
           <label className="text-xs font-semibold text-slate-600">Category<select className={field} value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)}>{Object.entries(EXPENSE_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
           <label className="text-xs font-semibold text-slate-600">Amount (₹)<input type="number" min={1} className={field} value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
-          <label className="text-xs font-semibold text-slate-600">Date<input type="date" max={today()} className={field} value={date} onChange={(e) => setDate(e.target.value)} /></label>
+          <label className="text-xs font-semibold text-slate-600">Date<input type="date" max={todayIST()} className={field} value={date} onChange={(e) => setDate(e.target.value)} /></label>
           <label className="text-xs font-semibold text-slate-600">Paid by<select className={field} value={method} onChange={(e) => setMethod(e.target.value as PayMethod)}>{Object.entries(PAY_METHODS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
         </div>
         <div className="mt-2 flex gap-2">
           <input className={`${field} flex-1`} maxLength={120} placeholder="Note (optional) — vendor, what for" value={note} onChange={(e) => setNote(e.target.value)} aria-label="Expense note" />
-          <button className={btn} disabled={busy || !(Number(amount) >= 1)} onClick={async () => { await send({ action: 'add_expense', category, amount: Number(amount), date, method, note }); setAmount(''); setNote(''); }}>Add</button>
+          <button className={btn} disabled={busy || !(Number(amount) >= 1)} onClick={async () => { if (await send({ action: 'add_expense', category, amount: Number(amount), date, method, note })) { setAmount(''); setNote(''); } }}>Add</button>
         </div>
       </div>
 

@@ -57,6 +57,11 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | Real payments (Razorpay: visit fee, advance, milestone release) | 🟡 | Needs keys |
 | Notifications (SMS/WhatsApp on booking, quote, submission) | ⬜ | |
 
+## 4b. Hardening (bug-hunt pass)
+| Fixed: milestone deadlock after a change request when it already had 6 photos · NaN/Infinity/absurd `drainFt` producing NaN quotes · JSON-store wipe on any read error · full owner phones in the admin issues API · unbounded request bodies (now 413) · wrong-typed JSON returning 500 (now 400) · past/far-future visit slots · impossible expense dates (2026-02-31) · quote/milestone rounding on tiny jobs (₹0 milestones, quote above its own range) · per-room prices not summing to the total · home-plan → interiors hand-off double-scaling area (~22 % under-priced) · estimate calling >15 ft drains "comfortable" while the advisor said amber · visit slots and expense dates in the viewer's/UTC zone instead of IST · forms clearing input when an action failed · draft plans leaking between users on a shared device / newer unsaved drafts silently dropped · pages stuck on "Loading…" after a failed fetch · OTP re-request invalidating a real code / resetting the attempt counter | ✅ | Each has a regression test (`regressions.test.ts` etc.) |
+
+**Known limitations (accepted for now):** per-IP rate limits trust `x-forwarded-for`, which is spoofable without a trusted proxy (per-phone caps still hold and the limiter store is size-bounded) · the JSON store is single-process (two server instances would lose updates) · a 4th+ bedroom or "Other" room is not priced by interiors (the UI says so) · no CAPTCHA on OTP requests, so a determined attacker can still SMS-bomb a number up to the caps.
+
 ## 5. Platform
 | Persistent storage | 🟡 | JSON files in `.data/` (works locally/single server, **not serverless**). Supabase schema + `migrations/001_cities.sql` written but **never run**; app doesn't use it yet |
 | Seed crews (16 in Bareilly & Lucknow) | 🟡 | Fake names. Replace with field-agent-onboarded real crews |

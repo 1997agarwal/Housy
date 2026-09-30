@@ -19,7 +19,7 @@ export default function ProfilePage() {
         <>
           <p className="mt-1 text-slate-600">Signed in as +91 {user.phone}</p>
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
-            <ProfileForm mode="edit" onSaved={(p) => { setCity(p.city); setSaved(true); }} />
+            <ProfileForm mode="edit" onSaved={(p) => { setCity(p.city); setSaved(true); }} onEdit={() => setSaved(false)} />
             {saved && <p role="status" className="mt-4 rounded-lg bg-emerald-100 px-3 py-2 text-sm font-bold text-emerald-900">Saved.</p>}
           </div>
         </>

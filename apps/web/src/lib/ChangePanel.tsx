@@ -10,7 +10,7 @@ const field = 'w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 te
 const btn = 'rounded-xl bg-[#E05A2B] px-4 py-2 text-sm font-bold text-white hover:bg-[#C44519] disabled:opacity-60';
 const STATUS = { requested: ['Waiting for a price', 'bg-amber-100 text-amber-800'], quoted: ['Price ready — your call', 'bg-blue-100 text-blue-800'], approved: ['Approved', 'bg-emerald-100 text-emerald-800'], declined: ['Declined', 'bg-slate-100 text-slate-600'] } as const;
 
-export function ChangePanel({ p, send, busy }: { p: Project; send: (body: object) => Promise<void>; busy: boolean }) {
+export function ChangePanel({ p, send, busy }: { p: Project; send: (body: object) => Promise<boolean>; busy: boolean }) {
   const changes = p.changes ?? [];
   const [show, setShow] = useState(false);
   const [title, setTitle] = useState('');
@@ -38,7 +38,7 @@ export function ChangePanel({ p, send, busy }: { p: Project; send: (body: object
               {CHANGE_TRADES.map((t) => <option key={t} value={t}>{TRADE_LABEL[t]}</option>)}
             </select></label>
           <button className={btn} disabled={busy || title.trim().length < 3 || description.trim().length < 10}
-            onClick={async () => { await send({ action: 'request_change', title, description, trade }); setTitle(''); setDescription(''); setShow(false); }}>Ask for a price</button>
+            onClick={async () => { if (await send({ action: 'request_change', title, description, trade })) { setTitle(''); setDescription(''); setShow(false); } }}>Ask for a price</button>
         </div>
       )}
 

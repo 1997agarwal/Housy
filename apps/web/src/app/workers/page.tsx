@@ -3,25 +3,33 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useCity } from '@/lib/city-context';
+import { LoadError } from '@/lib/LoadError';
+import { cityName, useT } from '@/lib/i18n';
 import { TRADES, TRADE_LABEL } from '@/lib/pros';
 import type { ProWithStats } from '@/lib/reviews';
 import { inr } from '@/lib/catalog';
 
 export default function Workers() {
   const { city } = useCity();
+  const { lang } = useT();
+  const [err, setErr] = useState(false);
+  const [tick, setTick] = useState(0);
   const [trade, setTrade] = useState('');
   const [pros, setPros] = useState<ProWithStats[] | null>(null);
 
   useEffect(() => {
     let live = true;
-    setPros(null);
-    fetch(`/api/pros?city=${city.id}${trade ? `&trade=${trade}` : ''}`).then((r) => r.json()).then((d) => live && setPros(d.pros ?? []));
+    setPros(null); setErr(false);
+    fetch(`/api/pros?city=${city.id}${trade ? `&trade=${trade}` : ''}`)
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then((d) => live && setPros(d.pros ?? []))
+      .catch(() => live && setErr(true));
     return () => { live = false; };
-  }, [city.id, trade]);
+  }, [city.id, trade, tick]);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="text-3xl font-black tracking-tight text-slate-900">Verified crews in {city.name}</h1>
+      <h1 className="text-3xl font-black tracking-tight text-slate-900">Verified crews in {cityName(city, lang)}</h1>
       <p className="mt-1 text-slate-600">Field-agent verified masons, plumbers, electricians and engineers. On Housy projects they are assigned to your phases — you don’t have to chase them.</p>
 
       <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Filter by trade">
@@ -33,7 +41,7 @@ export default function Workers() {
         ))}
       </div>
 
-      {pros === null ? <p className="mt-8 text-slate-500">Loading…</p> : pros.length === 0 ? (
+      {err ? <LoadError message="Couldn’t load crews. Check your connection and try again." onRetry={() => setTick((n) => n + 1)} /> : pros === null ? <p className="mt-8 text-slate-500">Loading…</p> : pros.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
           <p className="font-bold text-slate-900">{city.status === 'live' ? `No ${trade ? TRADE_LABEL[trade as keyof typeof TRADE_LABEL].toLowerCase() : 'crew'} listed in ${city.name} yet.` : `We’re onboarding crews in ${city.name}.`}</p>
           <p className="mt-1 text-sm text-slate-600">Our field agents register Mistris and contractors in person. Join the waitlist and you’ll hear first.</p>

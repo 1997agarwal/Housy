@@ -14,7 +14,7 @@ export function UserMenu() {
   return (
     <span className="flex items-center gap-3">
       {user.isAdmin && <Link href="/admin" className="text-slate-700 hover:text-slate-900">{t('nav.ops')}</Link>}
-      <Link href={user.onboarded ? '/profile' : '/welcome'} className="hidden sm:inline text-slate-700 hover:text-slate-900" title="Your profile">
+      <Link href={user.onboarded ? '/profile' : '/welcome'} className="text-slate-700 hover:text-slate-900" title="Your profile">
         {user.onboarded ? user.name.split(' ')[0] : t('nav.finishSignup')}
       </Link>
       <button onClick={async () => { await logout(); router.push('/'); router.refresh(); }} className="text-slate-600 hover:text-slate-900" title={`Signed in as ${user.phone}`}>{t('nav.logout')}</button>

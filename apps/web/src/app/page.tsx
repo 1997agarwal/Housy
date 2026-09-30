@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { ServiceGrid } from './ServiceGrid';
 import { useT } from '@/lib/i18n';
+import { useAuth } from '@/lib/auth-context';
 
 export default function Home() {
   const { t } = useT();
+  const { user } = useAuth();
   return (
     <div>
       <section className="bg-gradient-to-b from-orange-50 to-[#FAF9F6]">
@@ -14,7 +16,7 @@ export default function Home() {
           <h1 className="mt-3 max-w-3xl text-4xl sm:text-5xl font-black tracking-tight text-slate-900">{t('home.title')}</h1>
           <p className="mt-4 max-w-2xl text-lg text-slate-600">{t('home.desc')}</p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/welcome" className="rounded-xl bg-[#E05A2B] px-6 py-3 font-bold text-white shadow-lg shadow-orange-500/25 hover:bg-[#C44519]">{t('home.getStarted')}</Link>
+            <Link href={user?.onboarded ? '/#services' : '/welcome'} className="rounded-xl bg-[#E05A2B] px-6 py-3 font-bold text-white shadow-lg shadow-orange-500/25 hover:bg-[#C44519]">{t('home.getStarted')}</Link>
             <Link href="/workers" className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700 hover:border-slate-400">{t('home.findCrews')}</Link>
             <a href="#services" className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700 hover:border-slate-400">{t('home.seeAll')}</a>
           </div>

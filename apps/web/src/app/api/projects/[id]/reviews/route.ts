@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireSession } from '@/lib/auth';
-import { errorResponse } from '@/lib/http';
+import { errorResponse, readBody } from '@/lib/http';
 import { getProject, NotFoundError } from '@/lib/projects';
 import { createReview, reviewablePros, reviewsForProject } from '@/lib/reviews';
 
@@ -21,6 +21,6 @@ export async function GET(_: Request, { params }: Ctx) {
 export async function POST(req: Request, { params }: Ctx) {
   try {
     const s = await requireSession();
-    return NextResponse.json(await createReview((await params).id, s.phone, await req.json()), { status: 201 });
+    return NextResponse.json(await createReview((await params).id, s.phone, await readBody(req)), { status: 201 });
   } catch (e) { return errorResponse(e); }
 }

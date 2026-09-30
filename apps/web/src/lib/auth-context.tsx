@@ -12,7 +12,10 @@ const Ctx = createContext<{ user: User | null | undefined; refresh: () => Promis
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const refresh = useCallback(async () => {
-    try { setUser((await (await fetch('/api/auth/me')).json()).user); } catch { setUser(null); }
+    try {
+      const r = await fetch('/api/auth/me');
+      setUser(r.ok ? ((await r.json()).user ?? null) : null);   // a bad response means "not logged in", never "still loading"
+    } catch { setUser(null); }
   }, []);
   useEffect(() => { refresh(); }, [refresh]);
   const logout = useCallback(async () => { await fetch('/api/auth/logout', { method: 'POST' }); setUser(null); }, []);

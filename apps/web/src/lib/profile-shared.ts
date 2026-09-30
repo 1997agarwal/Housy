@@ -1,3 +1,4 @@
+import { toNum } from './num';
 // Browser-safe: constants, types and validation. Storage lives in profile.ts (server only).
 import { getCity } from './cities';
 
@@ -20,8 +21,8 @@ export class ProfileError extends Error {}
 
 const has = <T extends object>(o: T, k: unknown): k is keyof T => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 const optNum = (v: unknown, min: number, max: number, label: string) => {
-  if (v === undefined || v === null || v === '') return undefined;
-  const n = Number(v);
+  if (v === undefined || v === null || (typeof v === 'string' && v.trim() === '')) return undefined;   // blank = not given
+  const n = toNum(v);
   if (!(n >= min && n <= max)) throw new ProfileError(`${label} looks wrong`);
   return n;
 };

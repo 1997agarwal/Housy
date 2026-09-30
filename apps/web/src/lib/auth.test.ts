@@ -66,8 +66,9 @@ describe('OTP + session', () => {
     await expect(requestOtp('9876543210')).resolves.toBeTruthy();
   });
 
-  it('caps requests per phone (5/hour) and per IP (10/hour)', async () => {
-    for (let i = 0; i < 5; i++) { await codeOf('9876543210', `1.1.1.${i}`); vi.setSystemTime(new Date(Date.now() + 31_000)); }
+  it('caps NEW codes per phone (5/hour) and requests per IP (10/hour)', async () => {
+    // Each request 5+ minutes apart finds the previous code expired, so it is a genuinely new code.
+    for (let i = 0; i < 5; i++) { await codeOf('9876543210', `1.1.1.${i}`); vi.setSystemTime(new Date(Date.now() + 301_000)); }
     await rejects(requestOtp('9876543210', '9.9.9.9'), 429, /Too many code requests/);
     // one IP hammering different numbers
     for (let i = 0; i < 10; i++) await codeOf(`98000000${10 + i}`, '2.2.2.2');
@@ -77,12 +78,39 @@ describe('OTP + session', () => {
     await expect(requestOtp('9800000099', '2.2.2.2')).resolves.toBeTruthy();
   });
 
-  it('a newer code replaces the older one', async () => {
+  it('re-requesting inside the validity window re-sends the SAME code (nobody can invalidate a real code)', async () => {
     const c1 = await codeOf('9876543210');
     vi.setSystemTime(new Date('2026-10-01T10:00:31Z'));
+    expect(await codeOf('9876543210', '6.6.6.6')).toBe(c1);          // an attacker re-requesting changes nothing
+    vi.setSystemTime(new Date('2026-10-01T10:01:02Z'));
+    expect(await codeOf('9876543210', '7.7.7.7')).toBe(c1);
+    await expect(verifyOtp('9876543210', c1)).resolves.toBeTruthy();   // the victim's code still works
+  });
+
+  it('re-requesting does NOT reset the wrong-attempt counter', async () => {
+    const code = await codeOf('9876543210');
+    const wrong = code === '000000' ? '111111' : '000000';
+    for (let i = 0; i < 3; i++) await rejects(verifyOtp('9876543210', wrong), 401, /Incorrect/);
+    vi.setSystemTime(new Date('2026-10-01T10:00:31Z'));
+    await codeOf('9876543210');                                        // "fresh" request
+    await rejects(verifyOtp('9876543210', wrong), 401, /Incorrect/);
+    await rejects(verifyOtp('9876543210', wrong), 401, /Incorrect/);   // 5th wrong attempt overall
+    await rejects(verifyOtp('9876543210', code), 401, /Too many attempts/);
+  });
+
+  it('an attacker cannot use up the hourly cap to lock the owner out: reused codes are free', async () => {
+    const code = await codeOf('9876543210', '1.1.1.1');
+    for (let i = 1; i <= 8; i++) { vi.setSystemTime(new Date(Date.now() + 31_000)); expect(await codeOf('9876543210', `5.5.5.${i}`)).toBe(code); }
+    vi.setSystemTime(new Date(Date.now() + 600_000));                  // code expired → the owner asks for a new one
+    await expect(requestOtp('9876543210', '3.3.3.3')).resolves.toBeTruthy();
+  });
+
+  it('after a code expires, the next request issues a different one', async () => {
+    const c1 = await codeOf('9876543210');
+    vi.setSystemTime(new Date('2026-10-01T10:06:00Z'));
     const c2 = await codeOf('9876543210');
-    if (c1 !== c2) await rejects(verifyOtp('9876543210', c1), 401);
     await expect(verifyOtp('9876543210', c2)).resolves.toBeTruthy();
+    expect(typeof c1).toBe('string');
   });
 
   it('rejects a tampered or foreign session cookie, and honours logout', async () => {
