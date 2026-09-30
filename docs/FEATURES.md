@@ -11,7 +11,7 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | Signed httpOnly session cookie (30 d), logout | ✅ | tamper/expiry tested |
 | SMS delivery via MSG91 | 🟡 | Code written, **never run against a real account**. Without keys: demo mode shows the code on screen (dev, or `HOUSY_DEV_OTP=1`) |
 | 2-step onboarding + editable profile | ✅ | name, email, where you live, language, property city/type/area/value, goals, timeline; drives welcome recommendations & default city |
-| Hindi UI | 🟡 | Language *preference* is stored; the interface is English only |
+| **Hindi UI** (EN / हिं toggle) | 🟡 | Header, home, city picker, sign-in/OTP, onboarding, welcome, and the **plan page incl. phase names, safety flags, tiers, dates**. Choice remembered per device; a saved profile language applies on a new device. **Still English:** project tracker page (milestone actions, quote findings, timeline), advisor, home-plan editor, crews page, reviews/issues/expenses panels, and server error messages. Copy needs a native-speaker review |
 | Inline verify-to-book (no lost form) + finish-sign-up nudge | ✅ | |
 
 ## 2. Cities

@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useAuth } from './auth-context';
+import { useT } from './i18n';
 
 const field = 'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-[#E05A2B] focus:outline-none focus:ring-2 focus:ring-orange-200';
 const btn = 'rounded-xl bg-[#E05A2B] px-5 py-2.5 font-bold text-white hover:bg-[#C44519] disabled:opacity-60';
 
 export function LoginForm({ onDone, defaultName = '', defaultPhone = '' }: { onDone?: () => void; defaultName?: string; defaultPhone?: string }) {
   const { refresh } = useAuth();
+  const { t } = useT();
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [name, setName] = useState(defaultName);
   const [phone, setPhone] = useState(defaultPhone);
@@ -39,20 +41,20 @@ export function LoginForm({ onDone, defaultName = '', defaultPhone = '' }: { onD
       {step === 'phone' ? (
         <>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div><label className="block text-sm font-semibold text-slate-700" htmlFor="lname">Your name</label>
+            <div><label className="block text-sm font-semibold text-slate-700" htmlFor="lname">{t('login.name')}</label>
               <input id="lname" className={field} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></div>
-            <div><label className="block text-sm font-semibold text-slate-700" htmlFor="lphone">Mobile number</label>
-              <input id="lphone" inputMode="numeric" className={field} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit number" autoComplete="tel" /></div>
+            <div><label className="block text-sm font-semibold text-slate-700" htmlFor="lphone">{t('login.phone')}</label>
+              <input id="lphone" inputMode="numeric" className={field} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('login.phonePh')} autoComplete="tel" /></div>
           </div>
-          <button className={btn} disabled={busy} onClick={send}>{busy ? 'Sending…' : 'Send code'}</button>
+          <button className={btn} disabled={busy} onClick={send}>{busy ? t('login.sending') : t('login.send')}</button>
         </>
       ) : (
         <>
-          <p className="text-sm text-slate-600">We sent a 6-digit code to <b>{phone}</b>. <button className="font-semibold text-[#E05A2B]" onClick={() => { setStep('phone'); setCode(''); setError(''); }}>Change number</button></p>
-          {demoCode && <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Demo mode — no SMS is sent. Your code is <b className="font-mono text-base">{demoCode}</b></p>}
-          <div><label className="block text-sm font-semibold text-slate-700" htmlFor="lcode">Verification code</label>
+          <p className="text-sm text-slate-600">{t('login.sentTo')} <b>{phone}</b>. <button className="font-semibold text-[#E05A2B]" onClick={() => { setStep('phone'); setCode(''); setError(''); }}>{t('login.change')}</button></p>
+          {demoCode && <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{t('login.demo')} <b className="font-mono text-base">{demoCode}</b></p>}
+          <div><label className="block text-sm font-semibold text-slate-700" htmlFor="lcode">{t('login.code')}</label>
             <input id="lcode" inputMode="numeric" maxLength={6} className={`${field} max-w-[12rem] font-mono tracking-widest`} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} autoComplete="one-time-code" /></div>
-          <button className={btn} disabled={busy || code.length !== 6} onClick={verify}>{busy ? 'Verifying…' : 'Verify & continue'}</button>
+          <button className={btn} disabled={busy || code.length !== 6} onClick={verify}>{busy ? t('login.verifying') : t('login.verify')}</button>
         </>
       )}
       {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{error}</p>}

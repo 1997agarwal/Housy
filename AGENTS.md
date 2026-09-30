@@ -34,7 +34,8 @@ Full rationale: `docs/PRODUCT_DIRECTION.md`. Current status: `docs/FEATURES.md`.
 7. Structural work (walls, new house, full renovation) must always include an engineer/architect phase.
 8. **Pattern for shared code**: server logic in `x.ts`, browser-safe constants/types/validation in `x-shared.ts` (or `limits.ts`). Client components import only the `-shared` files (or `import type`).
 9. Change orders: an approved change appends a milestone and raises `quote.total` together; a pending change holds a project open. Keep `sum(milestones) + advance === quote.total`.
-10. Adding a project type = add to `PROJECT_TYPES` **and** make sure every live city has crew for each phase trade + the first-visit expert (`catalog.test.ts` enforces this).
+10. **i18n**: user-facing strings live in `src/lib/messages.ts` (`en` is the source, `hi` must define the same keys and `{placeholders}` — `messages.test.ts` fails otherwise). Use `const { t, lang } = useT()`; never hard-code new UI copy. Data-level Hindi lives next to the data (`titleHi`, `taglineHi`, `areaLabelHi`, phase `nameHi`, flag `textHi`, city `hi`). Hindi is still partial — see docs/FEATURES.md.
+11. Adding a project type = add to `PROJECT_TYPES` **and** make sure every live city has crew for each phase trade + the first-visit expert (`catalog.test.ts` enforces this) **and** give it Hindi copy (`messages.test.ts` enforces this).
 
 ## Commands (run from `apps/web`)
 `npm test` · `npm run typecheck` · `npm run lint` · `npm run build` · `npm run dev`
