@@ -357,3 +357,51 @@ describe('change orders (scope changes in writing)', () => {
     expect(d.status).toBe('completed');
   });
 });
+
+describe('expenses and budget', () => {
+  useTempStore();
+  const today = () => new Date().toISOString().slice(0, 10);
+  const add = (id: string, o: object = {}, who = OWNER) => act(id, { action: 'add_expense', category: 'materials', amount: 4500, date: today(), method: 'upi', note: 'Cement', ...o } as any, who);
+
+  it('logs and deletes expenses, privately', async () => {
+    const p = await createProject(input(), OWNER);
+    const a = await add(p.id);
+    expect(a.expenses).toHaveLength(1);
+    expect(a.expenses![0]).toMatchObject({ category: 'materials', amount: 4500, method: 'upi', note: 'Cement' });
+    await expect(add(p.id, {}, OTHER)).rejects.toThrow(NotFoundError);
+    await expect(act(p.id, { action: 'delete_expense', expenseId: a.expenses![0].id }, OTHER)).rejects.toThrow(NotFoundError);
+    await expect(act(p.id, { action: 'delete_expense', expenseId: 'nope' }, OWNER)).rejects.toThrow(ValidationError);
+    const d = await act(p.id, { action: 'delete_expense', expenseId: a.expenses![0].id }, OWNER);
+    expect(d.expenses).toEqual([]);
+  });
+
+  it('validates every field', async () => {
+    const p = await createProject(input(), OWNER);
+    const bad = (o: object) => expect(add(p.id, o)).rejects.toThrow(ValidationError);
+    await bad({ category: 'gold' }); await bad({ category: '__proto__' }); await bad({ method: 'crypto' });
+    for (const amount of [0, -5, NaN, 1e9, 'abc']) await bad({ amount });
+    for (const date of ['yesterday', '2026-13-45', '1999-01-01', '2999-01-01', '01/10/2026', '']) await bad({ date });
+    expect((await add(p.id, { note: 'x'.repeat(500) })).expenses![0].note).toHaveLength(120);
+    expect((await add(p.id, { amount: 99.999 })).expenses![1].amount).toBe(100);   // rounded to paise
+  });
+
+  it('caps the ledger and is closed for cancelled projects', async () => {
+    const p = await createProject(input(), OWNER);
+    for (let i = 0; i < 500; i++) await add(p.id, { amount: 1 + i });
+    await expect(add(p.id)).rejects.toThrow(/up to 500/);
+    const ids = (await getProject(p.id, OWNER))!.expenses!.map((x) => x.id);
+    expect(new Set(ids).size).toBe(500);                                    // no id collisions, so delete hits exactly one row
+    const q = await createProject(input(), OWNER);
+    await act(q.id, { action: 'cancel' }, OWNER);
+    await expect(add(q.id)).rejects.toThrow(ConflictError);
+  }, 20000);
+
+  it('sets, changes and clears the budget with sane limits', async () => {
+    const p = await createProject(input(), OWNER);
+    expect((await act(p.id, { action: 'set_budget', budget: 250000 }, OWNER)).budget).toBe(250000);
+    expect((await act(p.id, { action: 'set_budget', budget: 300000.6 }, OWNER)).budget).toBe(300001);
+    for (const budget of [0, 999, -1, 2e9, NaN]) await expect(act(p.id, { action: 'set_budget', budget }, OWNER)).rejects.toThrow(ValidationError);
+    expect((await act(p.id, { action: 'set_budget', budget: null }, OWNER)).budget).toBeUndefined();
+    await expect(act(p.id, { action: 'set_budget', budget: 100000 }, OTHER)).rejects.toThrow(NotFoundError);
+  });
+});

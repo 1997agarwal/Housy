@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { readJson, withJson } from './kv';
 import { normalizePhone } from './phone';
 import { estimate, getType, STYLES, type Estimate, type Tier } from './catalog';
@@ -5,6 +6,7 @@ import { proForTrade, visitExpert, type Pro } from './pros';
 import type { Trade } from './catalog';
 import { getCity } from './cities';
 import { saveImage, type ImageExt } from './uploads';
+import { EXPENSE_CATEGORIES, PAY_METHODS, MAX_EXPENSES, type Expense, type ExpenseCategory, type PayMethod } from './expenses-shared';
 import { CHANGE_TRADES, MAX_PENDING_CHANGES, MAX_PHOTOS_PER_MILESTONE, MAX_REVISIONS } from './limits';
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -40,6 +42,8 @@ export interface Project {
   initialTotal?: number;     // estimate total at booking, kept when the expert's measurements re-price it
   cancelReason?: string;
   photos?: Photo[];
+  budget?: number;           // the owner's own ceiling for the whole job (₹)
+  expenses?: Expense[];      // money the owner spent outside Housy, logged by hand
   changes?: ChangeOrder[];   // scope changes agreed in writing; approved ones become milestones and raise the quote
   timeline: { at: string; text: string }[];
 }
@@ -136,6 +140,9 @@ export type Action =
   | { action: 'request_changes'; milestoneId: string; feedback: string }
   | { action: 'request_change'; title: string; description: string; trade: string }
   | { action: 'price_change'; changeId: string; amount: number; days?: number }
+  | { action: 'add_expense'; category: string; amount: number; date: string; method: string; note?: string }
+  | { action: 'delete_expense'; expenseId: string }
+  | { action: 'set_budget'; budget: number | null }
   | { action: 'approve_change'; changeId: string }
   | { action: 'decline_change'; changeId: string };
 
@@ -214,6 +221,29 @@ export function act(id: string, a: Action, owner: string) {
       });
       q.accepted = true; p.status = 'active'; p.paid = q.advance;
       log(`Quote accepted — advance of ₹${q.advance.toLocaleString('en-IN')} paid`);
+    } else if (a.action === 'add_expense') {
+      if (p.status === 'cancelled') throw new ConflictError('This project was cancelled');
+      if (!Object.prototype.hasOwnProperty.call(EXPENSE_CATEGORIES, a.category)) throw new ValidationError('Choose a category');
+      if (!Object.prototype.hasOwnProperty.call(PAY_METHODS, a.method)) throw new ValidationError('Choose how you paid');
+      const amount = Number(a.amount);
+      if (!(amount >= 1 && amount <= 100_000_000)) throw new ValidationError('Amount looks wrong');
+      const t = Date.parse(a.date);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(a.date)) || Number.isNaN(t) || t < Date.parse('2000-01-01') || t > Date.now() + 864e5) throw new ValidationError('Pick a valid date (not in the future)');
+      if ((p.expenses ?? []).length >= MAX_EXPENSES) throw new ConflictError(`You can log up to ${MAX_EXPENSES} expenses per project`);
+      const note = typeof a.note === 'string' ? a.note.trim().slice(0, 120) : '';
+      (p.expenses ??= []).push({ id: 'E' + randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase(), category: a.category as ExpenseCategory, amount: Math.round(amount * 100) / 100, date: a.date, method: a.method as PayMethod, note: note || undefined, createdAt: now() });
+      log(`You logged ₹${Math.round(amount).toLocaleString('en-IN')} for ${EXPENSE_CATEGORIES[a.category as ExpenseCategory].toLowerCase()}`);
+    } else if (a.action === 'delete_expense') {
+      const before = p.expenses?.length ?? 0;
+      p.expenses = (p.expenses ?? []).filter((e) => e.id !== a.expenseId);
+      if (p.expenses.length === before) throw new ValidationError('Expense not found');
+    } else if (a.action === 'set_budget') {
+      if (a.budget === null) { p.budget = undefined; log('You removed your budget'); }
+      else {
+        const b = Number(a.budget);
+        if (!(b >= 1000 && b <= 1_000_000_000)) throw new ValidationError('Budget looks wrong');
+        p.budget = Math.round(b); log(`You set your budget to ₹${p.budget.toLocaleString('en-IN')}`);
+      }
     } else if (a.action === 'request_change') {
       if (p.status !== 'active') throw new ConflictError('Scope changes can be requested while work is in progress');
       const title = String(a.title ?? '').trim(), description = String(a.description ?? '').trim();

@@ -49,6 +49,7 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | Design/work review loop: owner can **request changes** (max 3 rounds); fix needs a *fresh* photo; design must be approved before execution phases unlock | ✅ | Designer renders carry captions |
 | **Problems & support**: owner reports quality / stoppage / material / design / payment issues (optionally tied to a step), threads with Housy, marks resolved or reopens; unresolved > 48 h auto-escalate; ops queue in `/admin` (reply/resolve) | ✅ | Max 5 open per project. No push notification when Housy replies (owner must open the page) |
 | **Change orders**: the "fixed price" promise made real — owner requests extra work, expert prices it, owner approves → new milestone + quote total rise together; a pending change holds the project open | ✅ | Expert pricing is a demo control |
+| **Budget & expenses**: your own budget vs where the project is heading (quote + your outside spending), 90 % warning / over-budget, category breakdown, ledger with delete, CSV export (formula-injection safe) | ✅ | Housy payments are tracked automatically; outside expenses are manual |
 | Ownership isolation (other users get 404) | ✅ | |
 | Crew directory per city, filter by trade, real ratings + recent reviews | ✅ | |
 | **Verified reviews**: owner of a *completed* project rates each person who worked on it (4 criteria, 1–5, optional text), once each; reviewer shown masked ("Asha K."); real ratings blend into the seed baseline | ✅ | Crew *assignment* still ranks on the seed rating, not live reviews |
@@ -65,7 +66,7 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 
 ## 6. Not started (from the PRD)
 Freeform AI chat (legacy backend only) · photo-to-floor-plan AI scan (legacy mobile) ·
-in-app chat · expense/photo journal beyond milestones · 
+in-app chat · photo journal beyond milestones · 
 supervisor-as-a-service · equipment & material marketplace · education content · field-agent app & Housy ID cards ·  NRI-specific features.
 
 ## Suggested next order
