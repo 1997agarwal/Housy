@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { PROJECT_TYPES, estimate, inrShort } from '@/lib/catalog';
+import { ServiceGrid } from './ServiceGrid';
 
 const STEPS = [
   ['Tell us the job', 'Pick a project, share size and city. Get an instant phase-wise estimate.'],
@@ -25,6 +25,7 @@ export default function Home() {
             <Link href="/plan/new-bathroom" className="rounded-xl bg-[#E05A2B] px-6 py-3 font-bold text-white shadow-lg shadow-orange-500/25 hover:bg-[#C44519]">
               Plan a new bathroom
             </Link>
+            <Link href="/workers" className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700 hover:border-slate-400">Find verified crews</Link>
             <a href="#services" className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700 hover:border-slate-400">Browse all projects</a>
           </div>
         </div>
@@ -32,22 +33,7 @@ export default function Home() {
 
       <section id="services" className="mx-auto max-w-5xl px-4 py-12">
         <h2 className="text-2xl font-extrabold text-slate-900">What are you planning?</h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {PROJECT_TYPES.map((t) => {
-            const e = estimate({ typeId: t.id, city: 'Bareilly', area: t.defaultArea, tier: 'standard', drainFt: t.askDrain ? 15 : undefined });
-            return (
-              <Link key={t.id} href={`/plan/${t.id}`} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md">
-                <div className="text-3xl">{t.emoji}</div>
-                <h3 className="mt-3 text-lg font-bold text-slate-900">{t.title}</h3>
-                <p className="mt-1 text-sm text-slate-600">{t.tagline}</p>
-                <p className="mt-4 text-sm font-semibold text-[#E05A2B]">
-                  from ~{inrShort(e.low)} · ~{e.days} days <span className="ml-1 transition group-hover:ml-2">→</span>
-                </p>
-              </Link>
-            );
-          })}
-        </div>
-        <p className="mt-3 text-xs text-slate-500">Indicative, standard tier, typical size in Bareilly. Your plan page gives an estimate for your own home.</p>
+        <ServiceGrid />
       </section>
 
       <section className="border-y border-slate-200 bg-white">

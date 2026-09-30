@@ -3,6 +3,7 @@
 import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getType, inr } from '@/lib/catalog';
+import { cityOrDefault } from '@/lib/cities';
 import type { Milestone, Project } from '@/lib/projects';
 
 const STAGES = ['Visit', 'Quote', 'Work', 'Done'] as const;
@@ -47,7 +48,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{p.id} · {p.city}</p>
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{p.id} · {cityOrDefault(p.city).name}</p>
       <h1 className="text-3xl font-black tracking-tight text-slate-900">{type.emoji} {type.title}</h1>
 
       <ol className="mt-6 grid grid-cols-4 gap-2" aria-label="Project stage">

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { listProjects } from '@/lib/projects';
 import { getType, inr } from '@/lib/catalog';
+import { cityOrDefault } from '@/lib/cities';
 
 export const dynamic = 'force-dynamic';
 const STATUS = { visit_scheduled: 'Visit scheduled', quote_ready: 'Quote ready', active: 'In progress', completed: 'Completed' } as const;
@@ -23,7 +24,7 @@ export default async function Projects() {
               <li key={p.id}>
                 <Link href={`/projects/${p.id}`} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 hover:border-orange-300">
                   <div>
-                    <p className="font-bold text-slate-900">{t.emoji} {t.title} · {p.city}</p>
+                    <p className="font-bold text-slate-900">{t.emoji} {t.title} · {cityOrDefault(p.city).name}</p>
                     <p className="text-sm text-slate-600">{p.id} · {p.contact.name}</p>
                   </div>
                   <div className="text-right">

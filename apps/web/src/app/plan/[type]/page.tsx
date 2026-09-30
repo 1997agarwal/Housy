@@ -2,7 +2,9 @@
 
 import { use, useMemo, useState } from 'react';
 import { useRouter, notFound } from 'next/navigation';
-import { CITIES, TIERS, estimate, getType, inr, inrShort, type Tier } from '@/lib/catalog';
+import { useCity } from '@/lib/city-context';
+import { CitySelect } from '@/lib/CitySelect';
+import { TIERS, estimate, getType, inr, inrShort, type Tier } from '@/lib/catalog';
 
 const field = 'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-[#E05A2B] focus:outline-none focus:ring-2 focus:ring-orange-200';
 const label = 'block text-sm font-semibold text-slate-700';
@@ -25,7 +27,8 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
   const router = useRouter();
   const slotOptions = useMemo(slots, []);
 
-  const [city, setCity] = useState('Bareilly');
+  const { city } = useCity();
+  const [joined, setJoined] = useState(false);
   const [area, setArea] = useState(type.defaultArea);
   const [tier, setTier] = useState<Tier>('standard');
   const [drain, setDrain] = useState<number | ''>(type.askDrain ? 15 : '');
@@ -37,8 +40,8 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
   const [error, setError] = useState('');
 
   const est = useMemo(
-    () => estimate({ typeId, city, area: Number(area) || 0, tier, drainFt: drain === '' ? undefined : Number(drain) }),
-    [typeId, city, area, tier, drain],
+    () => estimate({ typeId, city: city.id, area: Number(area) || 0, tier, drainFt: drain === '' ? undefined : Number(drain) }),
+    [typeId, city.id, area, tier, drain],
   );
 
   async function book() {
@@ -46,12 +49,22 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
     try {
       const res = await fetch('/api/projects', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ typeId, city, area: Number(area), tier, drainFt: drain === '' ? undefined : Number(drain), notes, name, phone, slot }),
+        body: JSON.stringify({ typeId, city: city.id, area: Number(area), tier, drainFt: drain === '' ? undefined : Number(drain), notes, name, phone, slot }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not book');
       router.push(`/projects/${data.id}`);
     } catch (e) { setError((e as Error).message); setBusy(false); }
+  }
+
+  async function joinWaitlist() {
+    setBusy(true); setError('');
+    try {
+      const res = await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ city: city.id, name, phone, typeId }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not join waitlist');
+      setJoined(true);
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
 
   return (
@@ -65,10 +78,9 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
             <h2 className="font-extrabold text-slate-900">1. About the job</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className={label} htmlFor="city">City where the property is</label>
-                <select id="city" className={field} value={city} onChange={(e) => setCity(e.target.value)}>
-                  {Object.keys(CITIES).map((c) => <option key={c}>{c}</option>)}
-                </select>
+                <span className={label}>City where the property is</span>
+                <CitySelect className="mt-1" />
+                <p className="mt-1 text-xs text-slate-500">{city.state} · {city.status === 'live' ? 'live' : 'coming soon'}</p>
               </div>
               <div>
                 <label className={label} htmlFor="area">{type.areaLabel}</label>
@@ -100,6 +112,22 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
             </div>
           </section>
 
+          {city.status === 'soon' ? (
+            <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 space-y-4">
+              <h2 className="font-extrabold text-slate-900">2. We’re not live in {city.name} yet</h2>
+              <p className="text-sm text-slate-700">Your estimate above is real. We’re registering verified crews in {city.name} — leave your number and we’ll message you the day we can run this project.</p>
+              {joined ? <p role="status" className="rounded-lg bg-emerald-100 px-3 py-2 text-sm font-bold text-emerald-900">You’re on the {city.name} waitlist. We’ll be in touch.</p> : (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div><label className={label} htmlFor="wname">Your name</label><input id="wname" className={field} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></div>
+                    <div><label className={label} htmlFor="wphone">Mobile number</label><input id="wphone" inputMode="numeric" className={field} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit number" autoComplete="tel" /></div>
+                  </div>
+                  {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{error}</p>}
+                  <button onClick={joinWaitlist} disabled={busy} className="rounded-xl bg-[#E05A2B] px-6 py-3 font-bold text-white hover:bg-[#C44519] disabled:opacity-60">{busy ? 'Joining…' : `Join the ${city.name} waitlist`}</button>
+                </>
+              )}
+            </section>
+          ) : (
           <section className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
             <h2 className="font-extrabold text-slate-900">2. Book a site visit — {inr(type.visitFee)}</h2>
             <p className="text-sm text-slate-600">
@@ -131,6 +159,7 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
             </button>
             <p className="text-xs text-slate-500">Visit fee is adjusted against your project if you go ahead. (Payment gateway not connected in this build.)</p>
           </section>
+          )}
         </div>
 
         <aside className="lg:sticky lg:top-20 lg:self-start space-y-4">

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { NoCoverageError } from '@/lib/pros';
 import { act, ConflictError, getProject, ValidationError, type Action } from '@/lib/projects';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +19,7 @@ export async function POST(req: Request, { params }: Ctx) {
     return NextResponse.json(await act((await params).id, body));
   } catch (e) {
     if (e instanceof ValidationError || e instanceof SyntaxError) return NextResponse.json({ error: e.message }, { status: 400 });
-    if (e instanceof ConflictError) return NextResponse.json({ error: e.message }, { status: 409 });
+    if (e instanceof ConflictError || e instanceof NoCoverageError) return NextResponse.json({ error: e.message }, { status: 409 });
     throw e;
   }
 }
