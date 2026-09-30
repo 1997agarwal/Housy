@@ -16,6 +16,11 @@ Full rationale: `docs/PRODUCT_DIRECTION.md`. Current status: `docs/FEATURES.md`.
 - `src/lib/profile.ts` (server) / `profile-shared.ts` (browser-safe) — sign-up profile.
 - `src/lib/uploads.ts` — image validation (magic bytes) + local storage. `admin.ts` — ops summary, allow-listed phones.
 - `src/lib/kv.ts` — JSON-file store with a process-wide lock + atomic writes. **Every store goes through it.**
+- `src/lib/advisor.ts` — feasibility rules (wall G/A/R, bathroom drain fall). **Safety-critical**: uncertainty can never be green; tests sweep every answer combination. Don't loosen rules without updating the tests' definition of "safe".
+- `src/lib/reviews.ts` (+ `reviews-shared.ts`) — verified reviews; only the owner of a *completed* project, once per person; phone never leaves the server.
+- `src/lib/issues.ts` (+ `issues-shared.ts`) — problems & support threads, ops actions, 48 h escalation (computed, not stored).
+- `src/lib/plan.ts` / `plan-shared.ts` — home plan storage / pure geometry (overlap, drain run, interiors mapping, validation).
+- `src/lib/limits.ts` — browser-safe constants shared by UI and server (photo caps, revisions, change-order trades).
 - `src/lib/http.ts` — the single domain-error → HTTP status map. Add new error classes there.
 - `src/app/api/**` — thin route handlers: `requireSession()` → call lib → `errorResponse(e)`.
 
@@ -27,7 +32,9 @@ Full rationale: `docs/PRODUCT_DIRECTION.md`. Current status: `docs/FEATURES.md`.
 5. Never trust client input: validate in `validateCreate` / `validateProfile` / `decodeDataUrl`. Enums are checked with `hasOwnProperty` (so `__proto__` can't pass).
 6. Uploads: identify by magic bytes; only JPEG/PNG/WebP; served private, `nosniff`. No SVG.
 7. Structural work (walls, new house, full renovation) must always include an engineer/architect phase.
-8. Adding a project type = add to `PROJECT_TYPES` **and** make sure every live city has crew for each phase trade + the first-visit expert (`catalog.test.ts` enforces this).
+8. **Pattern for shared code**: server logic in `x.ts`, browser-safe constants/types/validation in `x-shared.ts` (or `limits.ts`). Client components import only the `-shared` files (or `import type`).
+9. Change orders: an approved change appends a milestone and raises `quote.total` together; a pending change holds a project open. Keep `sum(milestones) + advance === quote.total`.
+10. Adding a project type = add to `PROJECT_TYPES` **and** make sure every live city has crew for each phase trade + the first-visit expert (`catalog.test.ts` enforces this).
 
 ## Commands (run from `apps/web`)
 `npm test` · `npm run typecheck` · `npm run lint` · `npm run build` · `npm run dev`
