@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { use, useEffect, useMemo, useState } from 'react';
 import { useRouter, notFound } from 'next/navigation';
 import { useCity } from '@/lib/city-context';
@@ -37,6 +38,12 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
   const [slot, setSlot] = useState(slotOptions[0].value);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // Arriving from the advisor: carry over the drain distance it collected.
+  useEffect(() => {
+    const d = Number(new URLSearchParams(window.location.search).get('drain'));
+    if (type.askDrain && d > 0 && d <= 500) setDrain(d);
+  }, [type.askDrain]);
 
   // Prefill the site contact from the verified account once known (never overwrite what the user typed).
   useEffect(() => { if (user) {
@@ -77,6 +84,9 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
     <div className="mx-auto max-w-5xl px-4 py-8">
       <h1 className="text-3xl font-black tracking-tight text-slate-900">{type.emoji} {type.title}</h1>
       <p className="mt-1 text-slate-600">{type.tagline}</p>
+      {(type.id === 'wall-break' || type.id === 'new-bathroom') && (
+        <p className="mt-2 text-sm"><Link href="/advisor" className="font-bold text-[#E05A2B]">Not sure it’s feasible? Run the free {type.id === 'wall-break' ? 'wall safety' : 'bathroom'} check first →</Link></p>
+      )}
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]">
         <div className="space-y-8">
