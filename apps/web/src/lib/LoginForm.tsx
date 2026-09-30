@@ -9,7 +9,7 @@ const btn = 'rounded-xl bg-[#E05A2B] px-5 py-2.5 font-bold text-white hover:bg-[
 
 export function LoginForm({ onDone, defaultName = '', defaultPhone = '' }: { onDone?: () => void; defaultName?: string; defaultPhone?: string }) {
   const { refresh } = useAuth();
-  const { t } = useT();
+  const { t, te } = useT();
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [name, setName] = useState(defaultName);
   const [phone, setPhone] = useState(defaultPhone);
@@ -57,7 +57,7 @@ export function LoginForm({ onDone, defaultName = '', defaultPhone = '' }: { onD
           <button className={btn} disabled={busy || code.length !== 6} onClick={verify}>{busy ? t('login.verifying') : t('login.verify')}</button>
         </>
       )}
-      {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{error}</p>}
+      {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{te(error)}</p>}
     </div>
   );
 }

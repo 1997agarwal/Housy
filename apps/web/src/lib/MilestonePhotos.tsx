@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Photo } from './projects';
+import { useT } from './i18n';
 
 // Shrinks photos in the browser (max 1280px, JPEG) so uploads stay small on slow connections.
 async function toDataUrl(file: File): Promise<string> {
@@ -14,14 +15,15 @@ async function toDataUrl(file: File): Promise<string> {
 }
 
 export function PhotoStrip({ projectId, photos, kind = 'site' }: { projectId: string; photos: Photo[]; kind?: 'site' | 'design' }) {
+  const { t } = useT();
   if (!photos.length) return null;
   return (
-    <ul className="mt-3 flex flex-wrap gap-2" aria-label={kind === 'design' ? 'Design renders' : 'Site photos'}>
+    <ul className="mt-3 flex flex-wrap gap-2" aria-label={t(kind === 'design' ? 'photo.designRenders' : 'photo.site')}>
       {photos.map((ph) => (
         <li key={ph.id} className="w-24">
-          <a href={`/api/projects/${projectId}/photos/${ph.id}`} target="_blank" rel="noreferrer" title={ph.caption || 'Site photo'}>
+          <a href={`/api/projects/${projectId}/photos/${ph.id}`} target="_blank" rel="noreferrer" title={ph.caption || t('photo.sitePhoto')}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/api/projects/${projectId}/photos/${ph.id}`} alt={ph.caption || (kind === 'design' ? 'Design render' : 'Site photo')} className="h-24 w-24 rounded-lg border border-slate-200 object-cover" />
+            <img src={`/api/projects/${projectId}/photos/${ph.id}`} alt={ph.caption || t(kind === 'design' ? 'photo.designRender' : 'photo.sitePhoto')} className="h-24 w-24 rounded-lg border border-slate-200 object-cover" />
           </a>
           {ph.caption && <p className="mt-1 truncate text-xs text-slate-600" title={ph.caption}>{ph.caption}</p>}
         </li>
@@ -31,6 +33,7 @@ export function PhotoStrip({ projectId, photos, kind = 'site' }: { projectId: st
 }
 
 export function PhotoUploader({ projectId, milestoneId, count, max, onAdded, kind = 'site' }: { projectId: string; milestoneId: string; count: number; max: number; onAdded: () => void; kind?: 'site' | 'design' }) {
+  const { t, te } = useT();
   const [caption, setCaption] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -43,18 +46,18 @@ export function PhotoUploader({ projectId, milestoneId, count, max, onAdded, kin
       const image = await toDataUrl(file);
       const r = await fetch(`/api/projects/${projectId}/photos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ milestoneId, image, caption: caption || undefined }) });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || 'Upload failed');
+      if (!r.ok) throw new Error(d.error || t('photo.fail'));
       setCaption(''); onAdded();
-    } catch (err) { setError(err instanceof Error && err.message ? err.message : 'Could not read that image'); } finally { setBusy(false); }
+    } catch (err) { setError(err instanceof Error && err.message ? err.message : t('photo.unreadable')); } finally { setBusy(false); }
   }
   return (
     <div className="mt-2">
       <label className={`inline-block cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-700 hover:border-slate-400 ${busy || count >= max ? 'pointer-events-none opacity-50' : ''}`}>
-        {busy ? 'Uploading…' : `${kind === 'design' ? '🖼️ Add design render' : '📷 Add site photo'} (${count}/${max})`}
+        {busy ? t('photo.uploading') : `${t(kind === 'design' ? 'photo.addDesign' : 'photo.addSite')} (${count}/${max})`}
         <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={pick} disabled={busy || count >= max} />
       </label>
-      <input className="ml-2 w-56 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" placeholder={kind === 'design' ? 'Caption, e.g. Living room – view 1' : 'Caption (optional)'} value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={120} aria-label="Photo caption" />
-      {error && <p role="alert" className="mt-1 text-sm font-semibold text-red-700">{error}</p>}
+      <input className="ml-2 w-56 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" placeholder={t(kind === 'design' ? 'photo.capDesign' : 'photo.cap')} value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={120} aria-label={t('photo.capLabel')} />
+      {error && <p role="alert" className="mt-1 text-sm font-semibold text-red-700">{te(error)}</p>}
     </div>
   );
 }

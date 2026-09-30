@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { visitSlots } from '@/lib/slots';
 import { cityName, typeArea, typeTagline, typeTitle, useT } from '@/lib/i18n';
 import { LoginForm } from '@/lib/LoginForm';
+import { finishLabel, optionLabel, roomName, styleName } from '@/lib/catalog-hi';
 import { STYLES, TIERS, estimate, getType, phaseName, inr, inrShort, interiorBudgetGuide, type Tier } from '@/lib/catalog';
 
 const field = 'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-[#E05A2B] focus:outline-none focus:ring-2 focus:ring-orange-200';
@@ -21,7 +22,7 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
   if (!found) notFound();
   const type = found; // narrowed once here so closures below (which TS can't narrow) see a defined type
   const router = useRouter();
-  const { t, lang } = useT();
+  const { t, lang, te } = useT();
   const slotOptions = useMemo(() => visitSlots(lang === 'hi' ? 'hi-IN' : 'en-IN'), [lang]);
 
   const { city } = useCity();
@@ -65,7 +66,7 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
   );
 
   async function book() {
-    if (type.interiors && !style) { setError('Pick a design style'); return; }
+    if (type.interiors && !style) { setError(t('plan.pickStyle')); return; }
     setBusy(true); setError('');
     try {
       const res = await fetch('/api/projects', {
@@ -125,16 +126,16 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
                   <div className="mt-1 flex flex-wrap gap-2">
                     {STYLES.map((st) => (
                       <button key={st} type="button" aria-pressed={style === st} onClick={() => setStyle(st)}
-                        className={`rounded-full border px-4 py-2 text-sm font-semibold ${style === st ? 'border-[#E05A2B] bg-orange-50 text-[#C44519]' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400'}`}>{st}</button>
+                        className={`rounded-full border px-4 py-2 text-sm font-semibold ${style === st ? 'border-[#E05A2B] bg-orange-50 text-[#C44519]' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400'}`}>{styleName(st, lang)}</button>
                     ))}
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">Not sure? Pick the closest — your designer will show options during the consultation.</p>
+                  <p className="mt-1 text-xs text-slate-500">{t('plan.styleHint')}</p>
                 </div>
                 <div>
-                  <label className={label} htmlFor="pv">Approx. property value (₹ lakh) <span className="font-normal text-slate-500">(optional)</span></label>
+                  <label className={label} htmlFor="pv">{t('plan.pv')} <span className="font-normal text-slate-500">{t('onb.optional')}</span></label>
                   <input id="pv" type="number" min={1} className={field} value={valueLakh} onChange={(e) => setValueLakh(e.target.value === '' ? '' : Number(e.target.value))} placeholder={t('plan.valuePh')} />
                   {valueLakh !== '' && valueLakh > 0 && (() => { const g = interiorBudgetGuide(valueLakh); return (
-                    <p className="mt-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-900">Interiors typically cost <b>{inrShort(g.low)} – {inrShort(g.high)}</b> for this property (8–12% of its value). Your estimate is on the right.</p>
+                    <p className="mt-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-900">{t('plan.pvNote', { range: `${inrShort(g.low)} – ${inrShort(g.high)}` })}</p>
                   ); })()}
                 </div>
               </>
@@ -150,20 +151,20 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
                       <button key={r.id} type="button" aria-pressed={on}
                         onClick={() => setRooms((cur) => (on ? (cur.length > 1 ? cur.filter((x) => x !== r.id) : cur) : [...cur, r.id]))}
                         className={`rounded-xl border p-3 text-left text-sm ${on ? 'border-[#E05A2B] bg-orange-50' : 'border-slate-300 bg-white text-slate-500 hover:border-slate-400'}`}>
-                        <div className="font-bold">{on ? '✓ ' : ''}{r.name}</div>
-                        <div className="text-xs">{on && cost ? `~${inrShort(cost)}` : 'Not included'}</div>
+                        <div className="font-bold">{on ? '✓ ' : ''}{roomName(r.id, r.name, lang)}</div>
+                        <div className="text-xs">{on && cost ? `~${inrShort(cost)}` : t('plan.notIncluded')}</div>
                       </button>
                     );
                   })}
                 </div>
-                <p className="mt-1 text-xs text-slate-500">Deselect rooms you don’t want designed now — the price updates instantly.</p>
+                <p className="mt-1 text-xs text-slate-500">{t('plan.deselect')}</p>
               </div>
             )}
             {type.finishes?.map((f) => (
               <div key={f.id}>
-                <label className={label} htmlFor={`fin-${f.id}`}>{f.label}</label>
+                <label className={label} htmlFor={`fin-${f.id}`}>{finishLabel(f.id, f.label, lang)}</label>
                 <select id={`fin-${f.id}`} className={field} value={finishes[f.id] ?? f.options[0].id} onChange={(e) => setFinishes((x) => ({ ...x, [f.id]: e.target.value }))}>
-                  {f.options.map((o) => <option key={o.id} value={o.id}>{o.label}{o.mult > 1 ? ` · +${Math.round((o.mult - 1) * 100)}% on materials` : ''}</option>)}
+                  {f.options.map((o) => <option key={o.id} value={o.id}>{optionLabel(o.id, o.label, lang)}{o.mult > 1 ? t('plan.matPct', { n: Math.round((o.mult - 1) * 100) }) : ''}</option>)}
                 </select>
               </div>
             ))}
@@ -195,7 +196,7 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
                     <div><label className={label} htmlFor="wname">{t('plan.yourName')}</label><input id="wname" className={field} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></div>
                     <div><label className={label} htmlFor="wphone">{t('plan.mobile')}</label><input id="wphone" inputMode="numeric" className={field} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('login.phonePh')} autoComplete="tel" /></div>
                   </div>
-                  {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{error}</p>}
+                  {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{te(error)}</p>}
                   <button onClick={joinWaitlist} disabled={busy} className="rounded-xl bg-[#E05A2B] px-6 py-3 font-bold text-white hover:bg-[#C44519] disabled:opacity-60">{busy ? t('plan.booking') : t('plan.join', { city: cName })}</button>
                 </>
               )}
@@ -225,7 +226,7 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
                 ))}
               </div>
             </div>
-            {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{error}</p>}
+            {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{te(error)}</p>}
             {user ? (
               <button onClick={book} disabled={busy} className="w-full rounded-xl bg-[#E05A2B] px-6 py-3 font-bold text-white hover:bg-[#C44519] disabled:opacity-60 sm:w-auto">
                 {busy ? t('plan.booking') : t('plan.bookBtn', { what, fee: inr(type.visitFee) })}
@@ -255,13 +256,13 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
             <ul className="mt-4 divide-y divide-slate-100 text-sm">
               {est.phases.map((p, i) => (
                 <li key={p.id} className="flex justify-between gap-3 py-2">
-                  <span><span className="text-slate-400">{i + 1}.</span> {phaseName(typeId, p.id, p.name, lang === 'hi')} <span className="text-xs text-slate-500">· {p.days}{lang === 'hi' ? ' दिन' : 'd'}</span></span>
+                  <span><span className="text-slate-400">{i + 1}.</span> {phaseName(typeId, p.id, p.name, lang === 'hi')} <span className="text-xs text-slate-500">· {t('plan.daysShort', { n: p.days })}</span></span>
                   <span className="font-semibold whitespace-nowrap">{inr(p.subtotal)}</span>
                 </li>
               ))}
             </ul>
           </div>
-          {est.flags.map((f, i) => <div key={i} className={`rounded-xl border p-3 text-sm ${FLAG[f.level]}`}>{lang === 'hi' && f.textHi ? f.textHi : f.text}</div>)}
+          {est.flags.map((f, i) => <div key={i} className={`rounded-xl border p-3 text-sm ${FLAG[f.level]}`}>{lang === 'hi' ? (f.textHi ?? te(f.text)) : f.text}</div>)}
         </aside>
       </div>
     </div>

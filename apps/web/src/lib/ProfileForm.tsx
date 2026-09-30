@@ -24,7 +24,7 @@ const fromProfile = (p: Profile | null | undefined, name = '', city = 'bareilly'
 // mode 'onboard' = two guided steps for new users; 'edit' = everything on one page.
 export function ProfileForm({ mode, defaultCity, onSaved, onEdit }: { mode: 'onboard' | 'edit'; defaultCity?: string; onSaved: (p: Profile) => void; onEdit?: () => void }) {
   const { user, refresh } = useAuth();
-  const { t, lang, setLang } = useT();
+  const { t, lang, setLang, te } = useT();
   const [d, setD] = useState<Draft>(() => fromProfile(user?.profile, user?.name, defaultCity));
   const [step, setStep] = useState(mode === 'onboard' ? 1 : 0);
   const [error, setError] = useState('');
@@ -117,7 +117,7 @@ export function ProfileForm({ mode, defaultCity, onSaved, onEdit }: { mode: 'onb
       {mode === 'onboard' && <p className="text-sm font-semibold text-slate-500">{t('onb.step', { n: step })} · {step === 1 ? t('onb.about') : t('onb.property')}</p>}
       {(mode === 'edit' || step === 1) && about}
       {(mode === 'edit' || step === 2) && property}
-      {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{error}</p>}
+      {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{te(error)}</p>}
       <div className="flex gap-3">
         {mode === 'onboard' && step === 2 && <button type="button" className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700" onClick={() => { setStep(1); setError(''); }}>{t('onb.back')}</button>}
         {mode === 'onboard' && step === 1

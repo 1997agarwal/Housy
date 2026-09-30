@@ -3,12 +3,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './auth-context';
 import { translate, type Key, type Lang } from './messages';
+import { translateServerText } from './server-text';
 import type { City } from './cities';
 import type { ProjectType } from './catalog';
 
 const KEY = 'housy.lang';
 type Vars = Record<string, string | number>;
-const Ctx = createContext<{ lang: Lang; setLang: (l: Lang) => void; t: (k: Key, v?: Vars) => string }>({ lang: 'en', setLang: () => {}, t: (k, v) => translate('en', k, v) });
+const Ctx = createContext<{ lang: Lang; setLang: (l: Lang) => void; t: (k: Key, v?: Vars) => string; te: (text: string) => string }>({ lang: 'en', setLang: () => {}, t: (k, v) => translate('en', k, v), te: (s) => s });
 
 // Order of preference: an explicit choice on this device → the language saved in the profile → English.
 // Starts as English on server and first client render (no hydration mismatch), then switches after mount.
@@ -31,7 +32,8 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem(KEY, l); } catch { /* ignore */ }
   }, []);
   const t = useCallback((k: Key, v?: Vars) => translate(lang, k, v), [lang]);
-  const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
+  const te = useCallback((text: string) => translateServerText(text, lang), [lang]);
+  const value = useMemo(() => ({ lang, setLang, t, te }), [lang, setLang, t, te]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

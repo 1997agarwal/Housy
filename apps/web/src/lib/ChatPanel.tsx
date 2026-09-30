@@ -12,7 +12,7 @@ const toDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
 });
 
 export function ChatPanel({ projectId, cancelled }: { projectId: string; cancelled: boolean }) {
-  const { t } = useT();
+  const { t, te } = useT();
   const [threads, setThreads] = useState<ChatThread[] | null>(null);
   const [active, setActive] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -124,7 +124,7 @@ export function ChatPanel({ projectId, cancelled }: { projectId: string; cancell
     if (await post(api, { proId: active, voice: await toDataUrl(clip.blob), seconds: clip.seconds })) discard();
   }
 
-  if (threads === null) return error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null;
+  if (threads === null) return error ? <p role="alert" className="text-sm text-red-700">{te(error)}</p> : null;
   const totalUnread = threads.reduce((a, x) => a + x.unread, 0);
   const activeThread = threads.find((x) => x.proId === active);
 
@@ -192,7 +192,7 @@ export function ChatPanel({ projectId, cancelled }: { projectId: string; cancell
               )}
               {!canRecord && <p className="mt-1 text-xs text-slate-400">{t('chat.noMic')}</p>}
               {text.length > MAX_CHAT_TEXT - 100 && <p className="mt-1 text-right text-xs text-slate-500">{text.length}/{MAX_CHAT_TEXT}</p>}
-              {error && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{error}</p>}
+              {error && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{te(error)}</p>}
             </div>
           )}
 
