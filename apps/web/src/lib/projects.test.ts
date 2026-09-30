@@ -257,3 +257,103 @@ describe('project lifecycle', () => {
     expect(new Set(all.map((x) => x.id)).size).toBe(25);
   });
 });
+
+describe('change orders (scope changes in writing)', () => {
+  useTempStore();
+  const start = async () => {
+    const p = await createProject(input(), OWNER);
+    await act(p.id, { action: 'complete_visit' }, OWNER);
+    return act(p.id, { action: 'accept_quote' }, OWNER);
+  };
+  const sumOk = (p: { milestones: { amount: number }[]; quote?: { total: number; advance: number } }) =>
+    expect(p.milestones.reduce((s, m) => s + m.amount, 0) + p.quote!.advance).toBe(p.quote!.total);
+  const req = { action: 'request_change' as const, title: 'Extra socket', description: 'Add a 16A socket for the geyser', trade: 'electrician' };
+
+  it('request → expert prices → owner approves: total and milestones grow together', async () => {
+    const a = await start();
+    const before = a.quote!.total;
+    const r = await act(a.id, req, OWNER);
+    const id = r.changes![0].id;
+    expect(r.changes![0].status).toBe('requested');
+    const q = await act(a.id, { action: 'price_change', changeId: id, amount: 2200, days: 1 }, OWNER);
+    expect(q.changes![0]).toMatchObject({ status: 'quoted', amount: 2200 });
+    expect(q.quote!.total).toBe(before);                                   // nothing changes until approved
+    const ok = await act(a.id, { action: 'approve_change', changeId: id }, OWNER);
+    expect(ok.quote!.total).toBe(before + 2200);
+    expect(ok.milestones.at(-1)).toMatchObject({ name: 'Change: Extra socket', amount: 2200, status: 'upcoming', phaseId: `change-${id}` });
+    expect(ok.milestones.at(-1)!.pro.trade).toBe('electrician');
+    expect(ok.milestones.at(-1)!.pro.city).toBe('bareilly');
+    sumOk(ok);
+  });
+
+  it('a declined change leaves the money untouched', async () => {
+    const a = await start();
+    const r = await act(a.id, req, OWNER);
+    const d = await act(a.id, { action: 'decline_change', changeId: r.changes![0].id }, OWNER);
+    expect(d.changes![0].status).toBe('declined');
+    expect(d.quote!.total).toBe(a.quote!.total);
+    expect(d.milestones).toHaveLength(a.milestones.length);
+    await expect(act(a.id, { action: 'approve_change', changeId: r.changes![0].id }, OWNER)).rejects.toThrow(ConflictError);
+  });
+
+  it('cannot approve before it is priced, price twice, or price absurdly', async () => {
+    const a = await start();
+    const id = (await act(a.id, req, OWNER)).changes![0].id;
+    await expect(act(a.id, { action: 'approve_change', changeId: id }, OWNER)).rejects.toThrow(/no price/);
+    for (const amount of [0, 100, -5, NaN, 1e9]) await expect(act(a.id, { action: 'price_change', changeId: id, amount }, OWNER), String(amount)).rejects.toThrow(ValidationError);
+    await expect(act(a.id, { action: 'price_change', changeId: id, amount: 2000, days: 500 }, OWNER)).rejects.toThrow(ValidationError);
+    await act(a.id, { action: 'price_change', changeId: id, amount: 2000 }, OWNER);
+    await expect(act(a.id, { action: 'price_change', changeId: id, amount: 3000 }, OWNER)).rejects.toThrow(/already been priced/);
+    const ok = await act(a.id, { action: 'approve_change', changeId: id }, OWNER);
+    await expect(act(a.id, { action: 'approve_change', changeId: id }, OWNER)).rejects.toThrow(ConflictError);   // no double-add
+    expect(ok.milestones.filter((m) => m.phaseId === `change-${id}`)).toHaveLength(1);
+    sumOk(ok);
+  });
+
+  it('validates the request and caps pending changes', async () => {
+    const a = await start();
+    await expect(act(a.id, { ...req, title: 'x' }, OWNER)).rejects.toThrow(ValidationError);
+    await expect(act(a.id, { ...req, description: 'short' }, OWNER)).rejects.toThrow(ValidationError);
+    await expect(act(a.id, { ...req, trade: 'engineer' }, OWNER)).rejects.toThrow(/who should do/);
+    await expect(act(a.id, { ...req, trade: '__proto__' }, OWNER)).rejects.toThrow(ValidationError);
+    for (let i = 0; i < 3; i++) await act(a.id, req, OWNER);
+    await expect(act(a.id, req, OWNER)).rejects.toThrow(/pending/);
+  });
+
+  it('only while the project is active, and only for its owner', async () => {
+    const p = await createProject(input(), OWNER);
+    await expect(act(p.id, req, OWNER)).rejects.toThrow(ConflictError);           // no quote accepted yet
+    const a = await start();
+    await expect(act(a.id, req, OTHER)).rejects.toThrow(NotFoundError);
+    const id = (await act(a.id, req, OWNER)).changes![0].id;
+    await expect(act(a.id, { action: 'price_change', changeId: id, amount: 2000 }, OTHER)).rejects.toThrow(NotFoundError);
+    await expect(act(a.id, { action: 'decline_change', changeId: id }, OTHER)).rejects.toThrow(NotFoundError);
+  });
+
+  it('an approved change must be finished and paid before the project completes; pending ones hold it open', async () => {
+    const a = await start();
+    const cid = (await act(a.id, req, OWNER)).changes![0].id;
+    await act(a.id, { action: 'price_change', changeId: cid, amount: 2000 }, OWNER);
+    // finish every original milestone while the change is still undecided
+    let cur = a;
+    for (const m of a.milestones) cur = await finish(a.id, m.id);
+    expect(cur.status).toBe('active');                                              // held open by the pending change
+    const ok = await act(a.id, { action: 'approve_change', changeId: cid }, OWNER);
+    expect(ok.status).toBe('active');
+    const extra = ok.milestones.at(-1)!;
+    const done = await finish(a.id, extra.id);
+    expect(done.status).toBe('completed');
+    expect(done.paid).toBe(done.quote!.total);
+    sumOk(done);
+  });
+
+  it('declining the last pending change completes an otherwise finished project', async () => {
+    const a = await start();
+    const cid = (await act(a.id, req, OWNER)).changes![0].id;
+    let cur = a;
+    for (const m of a.milestones) cur = await finish(a.id, m.id);
+    expect(cur.status).toBe('active');
+    const d = await act(a.id, { action: 'decline_change', changeId: cid }, OWNER);
+    expect(d.status).toBe('completed');
+  });
+});
