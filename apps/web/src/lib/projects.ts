@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { estimate, getType, type Estimate, type Tier } from './catalog';
 import { proForTrade, visitExpert, type Pro } from './pros';
+import { getCity } from './cities';
 
 // ── Types ────────────────────────────────────────────────────────────
 export type ProjectStatus = 'visit_scheduled' | 'quote_ready' | 'active' | 'completed';
@@ -54,6 +55,9 @@ export class ValidationError extends Error {}
 export function validateCreate(i: Partial<CreateInput>): CreateInput {
   const type = i.typeId && getType(i.typeId);
   if (!type) throw new ValidationError('Unknown project type');
+  const city = getCity(i.city);
+  if (!city) throw new ValidationError('Choose a city');
+  if (city.status !== 'live') throw new ValidationError(`We are not live in ${city.name} yet — join the waitlist and we will tell you first`);
   if (!i.name?.trim()) throw new ValidationError('Name is required');
   const digits = (i.phone ?? '').replace(/[\s-]/g, '');
   const local = digits.length > 10 ? digits.replace(/^(\+91|91|0)/, '') : digits; // only strip a prefix when there is one
@@ -62,7 +66,7 @@ export function validateCreate(i: Partial<CreateInput>): CreateInput {
   if (!i.tier || !['economy', 'standard', 'premium'].includes(i.tier)) throw new ValidationError('Invalid quality tier');
   const area = Number(i.area);
   if (!(area >= 5 && area <= 20000)) throw new ValidationError('Area looks wrong');
-  return { ...(i as CreateInput), area, drainFt: i.drainFt == null ? undefined : Math.max(0, Number(i.drainFt)) };
+  return { ...(i as CreateInput), city: city.id, area, drainFt: i.drainFt == null ? undefined : Math.max(0, Number(i.drainFt)) };
 }
 
 const now = () => new Date().toISOString();
@@ -77,7 +81,7 @@ export function createProject(input: CreateInput) {
       typeId: input.typeId, city: input.city, area: input.area, tier: input.tier, drainFt: input.drainFt, notes: input.notes,
       contact: { name: input.name.trim(), phone: input.phone.trim() },
       estimate: est,
-      visit: { slot: input.slot, fee: type.visitFee, expert: visitExpert(type.needsEngineer), done: false },
+      visit: { slot: input.slot, fee: type.visitFee, expert: visitExpert(input.city, type.needsEngineer), done: false },
       milestones: [], paid: 0,
       timeline: [{ at: now(), text: `Site visit booked for ${new Date(input.slot).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` }],
     };
@@ -123,7 +127,7 @@ export function act(id: string, a: Action) {
         // Last milestone absorbs rounding so amounts always sum to the quote.
         const amt = i === arr.length - 1 ? remaining - assigned : Math.round((remaining * ph.subtotal) / phaseTotal / 100) * 100;
         assigned += amt;
-        return { id: `${p.id}-M${i + 1}`, phaseId: ph.id, name: ph.name, days: ph.days, amount: amt, status: 'upcoming' as const, pro: proForTrade(ph.trade) };
+        return { id: `${p.id}-M${i + 1}`, phaseId: ph.id, name: ph.name, days: ph.days, amount: amt, status: 'upcoming' as const, pro: proForTrade(p.city, ph.trade) };
       });
       q.accepted = true; p.status = 'active'; p.paid = q.advance;
       log(`Quote accepted — advance of ₹${q.advance.toLocaleString('en-IN')} paid`);

@@ -1,5 +1,6 @@
 // Housy project catalog + estimate engine.
 // Pure functions only — shared by the browser (live preview) and the API (quote).
+import { getCity } from './cities';
 // NOTE: all rates are placeholder baselines (Bareilly, Standard tier). Calibrate with real quotes.
 
 export type Tier = 'economy' | 'standard' | 'premium';
@@ -9,19 +10,6 @@ export const TIERS: Record<Tier, { label: string; mult: number; blurb: string }>
   economy: { label: 'Economy', mult: 0.75, blurb: 'Basic fittings, functional finish' },
   standard: { label: 'Standard', mult: 1, blurb: 'Branded fittings, good finish' },
   premium: { label: 'Premium', mult: 1.5, blurb: 'Premium brands, designer finish' },
-};
-
-// City multiplier vs the Bareilly baseline. Property city, not where the owner lives.
-export const CITIES: Record<string, number> = {
-  Bareilly: 1,
-  Lucknow: 1.12,
-  Agra: 1.05,
-  Kanpur: 1.05,
-  Meerut: 1.1,
-  Varanasi: 1.02,
-  Jaipur: 1.15,
-  Indore: 1.1,
-  'Delhi NCR': 1.4,
 };
 
 type Basis = 'area' | 'fixed' | 'drain';
@@ -188,7 +176,7 @@ export const CONTINGENCY = 0.15;
 export function estimate(input: EstimateInput): Estimate {
   const type = getType(input.typeId);
   if (!type) throw new Error(`Unknown project type: ${input.typeId}`);
-  const cityMult = CITIES[input.city] ?? 1;
+  const cityMult = getCity(input.city)?.mult ?? 1;
   const tierMult = TIERS[input.tier].mult;
   const area = Math.max(1, input.area);
   const drain = Math.max(0, input.drainFt ?? 0);

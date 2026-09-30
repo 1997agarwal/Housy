@@ -18,16 +18,20 @@ If a feature does not make this loop faster, safer or more trusted, it does not 
 - **Project-first, not marketplace-first.** The POC/Mistri model remains the supply side; POCs are *assigned to phases*, not browsed by the owner.
 - **Milestone payments are in the MVP** (deviation from PRD v0.2, which deferred escrow to v2): an absent owner cannot verify work, so approve-then-pay is the trust mechanism. Currently simulated — no gateway.
 - **Structural work always includes an engineer phase.** Non-negotiable safety rule from the PRD.
+- **Multi-city from day one.** The homeowner picks the city where the *property* is (header picker, remembered per browser). It drives cost multipliers, which crews are shown, and who gets assigned. Registry: `apps/web/src/lib/cities.ts` (mirrored by `apps/backend/supabase/migrations/001_cities.sql`).
+- **Live vs coming-soon cities.** Only cities with onboarded crews (`live`: Bareilly, Lucknow) accept site-visit bookings. Elsewhere the user still gets an estimate, and booking becomes a waitlist. We never assign a crew from another city and never invent workers for a city we haven't onboarded.
+- **Going live in a new city** = onboard crews via field agents, then flip `status` to `live` (plus real rate calibration for that city).
 - Store is a JSON file (`apps/web/.data`, gitignored) behind `src/lib/projects.ts`; swap for Supabase without touching callers.
 
 ## What is real vs. simulated in the current build
 | Real | Simulated / placeholder |
 |---|---|
-| Estimate engine (`lib/catalog.ts`), validation, state machine with guarded transitions, persistence, concurrency-safe writes | All rates (placeholder, Bareilly baseline — calibrate with real quotes) |
+| City registry, per-city pricing/crews, waitlist, estimate engine (`lib/catalog.ts`), validation, state machine with guarded transitions, persistence, concurrency-safe writes | All rates and city cost multipliers (placeholders — calibrate with real quotes per city) |
 | Responsive UI for the whole loop | Experts/crews are seed data; "Simulate:" buttons stand in for the expert/crew apps |
 | | No auth, no payment gateway, no notifications, no photos |
 
 ## Next (in order)
+0. Onboard real crews for Bareilly/Lucknow (replace seed data in `lib/pros.ts`) and calibrate rates.
 1. Auth (phone OTP) + per-user projects (today `/projects` lists everything).
 2. Supabase-backed store; real POC data + field-agent onboarding app; WhatsApp dispatch to POCs.
 3. Expert visit app: measurements, photos, editable quote (scope changes = written change orders).
