@@ -406,6 +406,7 @@ export const en = {
   'plan.deselect': 'Deselect rooms you don’t want designed now — the price updates instantly.',
   'plan.matPct': ' · +{n}% on materials',
   'plan.daysShort': '{n}d',
+  'chat.secs': '{n}s',
 } as const;
 export type Key = keyof typeof en;
 
@@ -813,6 +814,7 @@ export const hi: Record<Key, string> = {
   'plan.deselect': 'जिन कमरों का डिज़ाइन अभी नहीं चाहिए उन्हें हटा दें — कीमत तुरंत बदल जाएगी।',
   'plan.matPct': ' · सामान पर +{n}%',
   'plan.daysShort': '{n} दिन',
+  'chat.secs': '{n} सेकंड',
 };
 
 export function translate(lang: Lang, key: Key, vars?: Record<string, string | number>): string {

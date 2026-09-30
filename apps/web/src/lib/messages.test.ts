@@ -43,7 +43,8 @@ describe('data-level Hindi', () => {
   it('phaseName falls back to the stored English name when there is no translation (e.g. change orders)', () => {
     expect(phaseName('new-bathroom', 'demo', 'Marking, core-cutting & demolition', true)).toContain('कोर-कटिंग');
     expect(phaseName('new-bathroom', 'demo', 'Marking', false)).toBe('Marking');
-    expect(phaseName('new-bathroom', 'change-X', 'Change: Extra socket', true)).toBe('Change: Extra socket');
+    expect(phaseName('new-bathroom', 'change-X', 'Change: Extra socket', true)).toBe('बदलाव: Extra socket');
+    expect(phaseName('new-bathroom', 'change-X', 'Change: Extra socket', false)).toBe('Change: Extra socket');
     expect(phaseName('nope', 'demo', 'Old data', true)).toBe('Old data');
   });
   it('every project type and category has Hindi copy', () => {

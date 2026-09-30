@@ -29,3 +29,9 @@ export function planRoomName(name: string, lang: Lang): string {
   const m = name.match(/^(Living room|Bedroom|Kitchen|Bathroom|Dining|Study|Pooja|Balcony|Other)(?: (\d+))?$/);
   return m ? `${DEFAULT_ROOM[m[1]]}${m[2] ? ` ${m[2]}` : ''}` : name;
 }
+
+const STATE: Record<string, string> = {
+  Bihar: 'बिहार', Chandigarh: 'चंडीगढ़', Delhi: 'दिल्ली', Gujarat: 'गुजरात', Karnataka: 'कर्नाटक', 'Madhya Pradesh': 'मध्य प्रदेश', Maharashtra: 'महाराष्ट्र',
+  Rajasthan: 'राजस्थान', 'Tamil Nadu': 'तमिलनाडु', Telangana: 'तेलंगाना', 'Uttar Pradesh': 'उत्तर प्रदेश', Uttarakhand: 'उत्तराखंड', 'West Bengal': 'पश्चिम बंगाल',
+};
+export const stateName = (state: string, lang: Lang) => pick(lang, STATE, state, state);

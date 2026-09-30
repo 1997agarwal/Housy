@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { visitSlots } from '@/lib/slots';
 import { cityName, typeArea, typeTagline, typeTitle, useT } from '@/lib/i18n';
 import { LoginForm } from '@/lib/LoginForm';
-import { finishLabel, optionLabel, roomName, styleName } from '@/lib/catalog-hi';
+import { finishLabel, optionLabel, roomName, stateName, styleName } from '@/lib/catalog-hi';
 import { STYLES, TIERS, estimate, getType, phaseName, inr, inrShort, interiorBudgetGuide, type Tier } from '@/lib/catalog';
 
 const field = 'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-[#E05A2B] focus:outline-none focus:ring-2 focus:ring-orange-200';
@@ -105,7 +105,7 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
               <div>
                 <span className={label}>{t('plan.city')}</span>
                 <CitySelect className="mt-1" />
-                <p className="mt-1 text-xs text-slate-500">{city.state} · {city.status === 'live' ? t('city.live') : t('city.soon')}</p>
+                <p className="mt-1 text-xs text-slate-500">{stateName(city.state, lang)} · {city.status === 'live' ? t('city.live') : t('city.soon')}</p>
               </div>
               <div>
                 <label className={label} htmlFor="area">{typeArea(type, lang)}</label>

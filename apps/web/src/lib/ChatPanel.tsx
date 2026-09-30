@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CHAT_POLL_MS, MAX_CHAT_TEXT, MAX_VOICE_SECONDS, type ChatMessage, type ChatThread } from './chat-shared';
 import { useT } from './i18n';
+import type { Key } from './messages';
 
 const btn = 'rounded-xl bg-[#E05A2B] px-4 py-2 text-sm font-bold text-white hover:bg-[#C44519] disabled:opacity-60';
 const timeIST = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' });
@@ -12,7 +13,7 @@ const toDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
 });
 
 export function ChatPanel({ projectId, cancelled }: { projectId: string; cancelled: boolean }) {
-  const { t, te } = useT();
+  const { t, te, lang } = useT();
   const [threads, setThreads] = useState<ChatThread[] | null>(null);
   const [active, setActive] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -142,8 +143,8 @@ export function ChatPanel({ projectId, cancelled }: { projectId: string; cancell
               <button key={th.proId} role="tab" aria-selected={th.proId === active} onClick={() => setActive(th.proId)}
                 className={`shrink-0 rounded-xl border px-3 py-2 text-left text-sm ${th.proId === active ? 'border-[#E05A2B] bg-orange-50' : 'border-slate-300 bg-white hover:border-slate-400'}`}>
                 <span className="block font-bold">{th.name}{th.unread > 0 && <span className="ml-2 rounded-full bg-[#E05A2B] px-1.5 py-0.5 text-[10px] font-bold text-white">{th.unread}</span>}</span>
-                <span className="block text-xs text-slate-500">{th.role}</span>
-                {th.last && <span className="block max-w-[14rem] truncate text-xs text-slate-600">{th.last.from === 'owner' ? `${t('chat.you')}: ` : ''}{th.last.preview}</span>}
+                <span className="block text-xs text-slate-500">{lang === 'hi' ? t(`trade.${th.trade}` as Key) : th.role}</span>
+                {th.last && <span className="block max-w-[14rem] truncate text-xs text-slate-600">{th.last.from === 'owner' ? `${t('chat.you')}: ` : ''}{te(th.last.preview)}</span>}
               </button>
             ))}
           </div>
@@ -156,7 +157,7 @@ export function ChatPanel({ projectId, cancelled }: { projectId: string; cancell
               <div key={m.id} className={`flex ${m.from === 'owner' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${m.from === 'owner' ? 'bg-[#E05A2B] text-white' : 'bg-white text-slate-800 shadow-sm'}`}>
                   {m.kind === 'voice' && m.audio
-                    ? <div><audio controls preload="none" src={`${api}/audio/${m.id}`} className="h-9 w-56 max-w-full" aria-label={`${t('chat.voice')} (${m.audio.seconds}s)`} /><span className="text-xs opacity-80">🎤 {m.audio.seconds}s</span></div>
+                    ? <div><audio controls preload="none" src={`${api}/audio/${m.id}`} className="h-9 w-56 max-w-full" aria-label={`${t('chat.voice')} (${t('chat.secs', { n: m.audio.seconds })})`} /><span className="text-xs opacity-80">🎤 {t('chat.secs', { n: m.audio.seconds })}</span></div>
                     : <p className="whitespace-pre-wrap break-words">{m.text}</p>}
                   <p className={`mt-0.5 text-right text-[10px] ${m.from === 'owner' ? 'text-orange-100' : 'text-slate-400'}`}>{timeIST(m.at)}</p>
                 </div>
@@ -185,7 +186,7 @@ export function ChatPanel({ projectId, cancelled }: { projectId: string; cancell
               {rec === 'ready' && clip && (
                 <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
                   <audio controls src={clip.url} className="h-9 w-56 max-w-full" aria-label={t('chat.voice')} />
-                  <span className="text-xs text-slate-500">{clip.seconds}s</span>
+                  <span className="text-xs text-slate-500">{t('chat.secs', { n: clip.seconds })}</span>
                   <button className="ml-auto text-sm font-bold text-slate-600 hover:underline" onClick={discard}>{t('chat.discard')}</button>
                   <button className={btn} disabled={busy} onClick={sendClip}>{busy ? t('chat.sending') : t('chat.sendVoice')}</button>
                 </div>

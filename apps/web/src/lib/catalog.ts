@@ -291,7 +291,7 @@ for (const t of PROJECT_TYPES) for (const ph of t.phases) ph.nameHi = PHASE_HI[`
 
 // Name of a phase in the viewer's language; works for old stored data too (looks up by ids, falls back to the stored name).
 export const phaseName = (typeId: string, phaseId: string, fallback: string, hindi: boolean) =>
-  (hindi && getType(typeId)?.phases.find((p) => p.id === phaseId)?.nameHi) || fallback;
+  (hindi && getType(typeId)?.phases.find((p) => p.id === phaseId)?.nameHi) || (hindi && fallback.startsWith('Change: ') ? `बदलाव: ${fallback.slice(8)}` : fallback);   // change-order milestones are "Change: <what the owner typed>"
 
 const ORDER: Category[] = ['build', 'renovate', 'interiors'];
 PROJECT_TYPES.sort((a, b) => ORDER.indexOf(a.category) - ORDER.indexOf(b.category));

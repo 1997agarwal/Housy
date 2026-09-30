@@ -7,7 +7,7 @@ import { PROJECT_TYPES } from './catalog';
 
 const PHASE_HI = new Map<string, string>();
 for (const t of PROJECT_TYPES) for (const p of t.phases) if (p.nameHi) PHASE_HI.set(p.name, p.nameHi);
-const phase = (name: string) => PHASE_HI.get(name) ?? name;                       // milestone names are phase names (or "Change: …" typed by the user)
+const phase = (name: string) => PHASE_HI.get(name) ?? (name.startsWith('Change: ') ? `बदलाव: ${name.slice(8)}` : name);                       // milestone names are phase names (or "Change: …" typed by the user)
 
 const VISIT: Record<string, string> = { 'site visit': 'साइट विज़िट', 'design consultation': 'डिज़ाइन कंसल्टेशन', 'plot visit': 'प्लॉट विज़िट' };
 const visit = (s: string) => VISIT[s.toLowerCase()] ?? s;
@@ -25,6 +25,7 @@ const CRITERION: Record<string, string> = { 'quality of work': 'काम की
 
 const EXACT: Record<string, string> = {
   // ── client-side fallbacks when the server sent no message ──
+  'Couldn’t load messages — check your connection.': 'संदेश लोड नहीं हो सके — कनेक्शन जाँचें।', 'That recording is too large — keep it shorter.': 'वह रिकॉर्डिंग बहुत बड़ी है — छोटी रखें।', 'Could not reach Housy — your message was not sent.': 'Housy तक नहीं पहुँच सके — आपका संदेश नहीं भेजा गया।',
   'Could not save — please try again': 'सेव नहीं हो सका — कृपया फिर कोशिश करें', 'Could not save': 'सेव नहीं हो सका', 'Could not book': 'बुकिंग नहीं हो सकी', 'Could not join waitlist': 'वेटलिस्ट में नहीं जुड़ सके',
   'Action failed — please try again': 'काम नहीं हो सका — कृपया फिर कोशिश करें', 'Could not send': 'भेजा नहीं जा सका', 'Something went wrong': 'कुछ गड़बड़ हो गई', 'Could not load project': 'प्रोजेक्ट लोड नहीं हो सका',
   'Could not reach Housy — check your connection and try again': 'Housy तक नहीं पहुँच सके — कनेक्शन जाँचकर फिर कोशिश करें', 'bad project id': 'प्रोजेक्ट आईडी सही नहीं है',
@@ -81,6 +82,7 @@ const EXACT: Record<string, string> = {
 
 type Rule = [RegExp, (m: RegExpMatchArray) => string];
 const RULES: Rule[] = [
+  [/^🎤 Voice note \((\d+)s\)$/, (m) => `🎤 वॉइस नोट (${m[1]} सेकंड)`],
   [/^Resolved: ([\s\S]+)$/, (m) => `सुलझाया गया: ${m[1]}`],
   [/^Unknown project type: (.+)$/, (m) => `अज्ञात प्रोजेक्ट प्रकार: ${m[1]}`],
   [/^(.+) must be at least (\d+) characters$/, (m) => `${FIELD[m[1]] ?? m[1]} कम से कम ${m[2]} अक्षर का होना चाहिए`],

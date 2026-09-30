@@ -52,6 +52,7 @@ for (const f of files) {
   }
   if (f.includes(`${SRC}/app/api/`)) for (const m of src.matchAll(/error: ('(?:[^'\\]|\\.)*'|"[^"]*")/g)) add(m[1].slice(1, -1).replace(/\\'/g, "'"), m.index!);
   if (f.endsWith('.tsx')) for (const m of src.matchAll(/\.error \|\| '((?:[^'\\]|\\.)*)'/g)) add(m[1], m.index!);
+  if (f.endsWith('.tsx')) for (const m of src.matchAll(/setError\('((?:[^'\\]|\\.)*)'\)/g)) add(m[1], m.index!);
   if (f.endsWith('/auth.ts')) for (const m of src.matchAll(/msg: ('(?:[^'\\]|\\.)*'|`[^`]*`)/g)) add(m[1].slice(1, -1).replace(/\$\{[^}]*\}/g, '5'), m.index!);
 }
 // Not user-facing prose (identifiers, HTTP details, developer-only guards).
