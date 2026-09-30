@@ -65,6 +65,43 @@ describe('estimate engine', () => {
   });
 });
 
+describe('interiors: rooms and finishes', () => {
+  const full = () => base('interiors-full', { area: 1000 });
+  const ids = getType('interiors-full')!.rooms!.map((r) => r.id);
+
+  it('room weights sum to 1', () => {
+    expect(getType('interiors-full')!.rooms!.reduce((a, r) => a + r.weight, 0)).toBeCloseTo(1, 5);
+  });
+  it('all rooms selected (or none given) equals the whole-home price', () => {
+    expect(base('interiors-full', { area: 1000, rooms: ids }).total).toBe(full().total);
+  });
+  it('fewer rooms cost less, more rooms cost more', () => {
+    const two = base('interiors-full', { area: 1000, rooms: ['living', 'kitchen'] }).total;
+    const four = base('interiors-full', { area: 1000, rooms: ['living', 'kitchen', 'master', 'bedroom2'] }).total;
+    expect(two).toBeLessThan(four);
+    expect(four).toBeLessThan(full().total);
+  });
+  it('gives an approximate price per selected room that adds up to the total', () => {
+    const e = base('interiors-full', { area: 1000, rooms: ['living', 'kitchen', 'master'] });
+    expect(e.rooms!.map((r) => r.id)).toEqual(['living', 'kitchen', 'master']);
+    expect(Math.abs(e.rooms!.reduce((a, r) => a + r.cost, 0) - e.total)).toBeLessThanOrEqual(150);
+    expect(e.rooms!.find((r) => r.id === 'living')!.cost).toBeGreaterThan(e.rooms!.find((r) => r.id === 'pooja' as never)?.cost ?? 0);
+  });
+  it('non-interiors types have no room breakdown', () => expect(base('new-bathroom').rooms).toBeUndefined());
+
+  it('a finish grade changes only its own phase’s materials', () => {
+    const a = base('interiors-full', { area: 1000, finishes: { shutter: 'laminate' } });
+    const b = base('interiors-full', { area: 1000, finishes: { shutter: 'pu' } });
+    const ph = (e: typeof a, id: string) => e.phases.find((p) => p.id === id)!;
+    expect(ph(b, 'carpentry').material).toBeGreaterThan(ph(a, 'carpentry').material * 1.35);
+    expect(ph(b, 'carpentry').labor).toBe(ph(a, 'carpentry').labor);
+    for (const id of ['design', 'civil', 'electrical', 'walls', 'furnish']) expect(ph(b, id).subtotal).toBe(ph(a, id).subtotal);
+  });
+  it('unknown finish ids are ignored by the engine (validation rejects them earlier)', () => {
+    expect(base('interiors-full', { area: 1000, finishes: { shutter: 'gold-plated' } }).total).toBe(full().total);
+  });
+});
+
 describe('coverage invariants', () => {
   const live = CITIES.filter((c) => c.status === 'live');
   it('has at least one live city', () => expect(live.length).toBeGreaterThan(0));

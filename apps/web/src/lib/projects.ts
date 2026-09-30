@@ -4,7 +4,7 @@ import { estimate, getType, STYLES, type Estimate, type Tier } from './catalog';
 import { proForTrade, visitExpert, type Pro } from './pros';
 import { getCity } from './cities';
 import { saveImage, type ImageExt } from './uploads';
-import { MAX_PHOTOS_PER_MILESTONE } from './limits';
+import { MAX_PHOTOS_PER_MILESTONE, MAX_REVISIONS } from './limits';
 
 // ── Types ────────────────────────────────────────────────────────────
 export type ProjectStatus = 'visit_scheduled' | 'quote_ready' | 'active' | 'completed' | 'cancelled';
@@ -14,12 +14,16 @@ export interface Milestone {
   id: string; phaseId: string; name: string; days: number; amount: number;
   status: MilestoneStatus; pro: Pro; updatedAt?: string;
   crewNote?: string;         // the crew's message when they submit the work for review
+  revisions?: number;        // how many times the owner sent this milestone back for changes
+  feedback?: string;         // the owner's latest change request
+  feedbackAt?: string;       // photos must be newer than this to count as proof of the fix
 }
+export { MAX_REVISIONS };
 export interface Photo { id: string; milestoneId: string; ext: ImageExt; caption?: string; at: string }
 export { MAX_PHOTOS_PER_MILESTONE };
 export interface Project {
   id: string; owner: string; createdAt: string; status: ProjectStatus;
-  typeId: string; city: string; area: number; tier: Tier; drainFt?: number; notes?: string; style?: string; propertyValueLakh?: number;
+  typeId: string; city: string; area: number; tier: Tier; drainFt?: number; notes?: string; style?: string; propertyValueLakh?: number; rooms?: string[]; finishes?: Record<string, string>;
   contact: { name: string; phone: string };
   estimate: Estimate;
   visit: { slot: string; fee: number; expert: Pro; done: boolean };
@@ -45,7 +49,7 @@ export async function getProject(id: string, owner: string) {
 
 // ── Commands ─────────────────────────────────────────────────────────
 export interface CreateInput {
-  typeId: string; city: string; area: number; tier: Tier; drainFt?: number; notes?: string; style?: string; propertyValueLakh?: number;
+  typeId: string; city: string; area: number; tier: Tier; drainFt?: number; notes?: string; style?: string; propertyValueLakh?: number; rooms?: string[]; finishes?: Record<string, string>;
   name: string; phone: string; slot: string;
 }
 export class ValidationError extends Error {}
@@ -69,9 +73,26 @@ export function validateCreate(i: Partial<CreateInput>): CreateInput {
     if (!i.style || !(STYLES as readonly string[]).includes(i.style)) throw new ValidationError('Pick a design style');
     style = i.style;
   }
+  let rooms: string[] | undefined, finishes: Record<string, string> | undefined;
+  if (type.rooms) {
+    if (Array.isArray(i.rooms)) {
+      rooms = [...new Set(i.rooms)] as string[];
+      if (rooms.length === 0) throw new ValidationError('Pick at least one room');
+      if (rooms.some((r) => !type.rooms!.some((d) => d.id === r))) throw new ValidationError('Unknown room selected');
+    }
+  }
+  if (type.finishes && i.finishes && typeof i.finishes === 'object') {
+    finishes = {};
+    for (const f of type.finishes) {
+      const v = (i.finishes as Record<string, unknown>)[f.id];
+      if (v === undefined) continue;
+      if (typeof v !== 'string' || !f.options.some((o) => o.id === v)) throw new ValidationError(`Unknown ${f.label.toLowerCase()} option`);
+      finishes[f.id] = v;
+    }
+  }
   const pv = i.propertyValueLakh == null || (i.propertyValueLakh as unknown) === '' ? undefined : Number(i.propertyValueLakh);
   if (pv !== undefined && !(pv >= 1 && pv <= 1_000_000)) throw new ValidationError('Property value looks wrong');
-  return { ...(i as CreateInput), style, propertyValueLakh: pv, notes: i.notes?.slice(0, 500), city: city.id, phone: sitePhone, area, drainFt: i.drainFt == null ? undefined : Math.max(0, Number(i.drainFt)) };
+  return { ...(i as CreateInput), style, rooms, finishes, propertyValueLakh: pv, notes: i.notes?.slice(0, 500), city: city.id, phone: sitePhone, area, drainFt: i.drainFt == null ? undefined : Math.max(0, Number(i.drainFt)) };
 }
 
 const now = () => new Date().toISOString();
@@ -80,10 +101,10 @@ const newId = () => 'HSY-' + Math.random().toString(36).slice(2, 8).toUpperCase(
 export function createProject(input: CreateInput, owner: string) {
   return tx((all) => {
     const type = getType(input.typeId)!;
-    const est = estimate({ typeId: input.typeId, city: input.city, area: input.area, tier: input.tier, drainFt: input.drainFt });
+    const est = estimate({ typeId: input.typeId, city: input.city, area: input.area, tier: input.tier, drainFt: input.drainFt, rooms: input.rooms, finishes: input.finishes });
     const p: Project = {
       id: newId(), owner, createdAt: now(), status: 'visit_scheduled',
-      typeId: input.typeId, city: input.city, area: input.area, tier: input.tier, drainFt: input.drainFt, notes: input.notes, style: input.style, propertyValueLakh: input.propertyValueLakh,
+      typeId: input.typeId, city: input.city, area: input.area, tier: input.tier, drainFt: input.drainFt, notes: input.notes, style: input.style, propertyValueLakh: input.propertyValueLakh, rooms: input.rooms, finishes: input.finishes,
       contact: { name: input.name.trim(), phone: input.phone.trim() },
       estimate: est,
       visit: { slot: input.slot, fee: type.visitFee, expert: visitExpert(input.city, type.expert ?? (type.needsEngineer ? 'engineer' : 'mason')), done: false },
@@ -103,7 +124,8 @@ export type Action =
   | { action: 'cancel'; reason?: string }
   | { action: 'accept_quote' }
   | { action: 'start' | 'approve'; milestoneId: string }
-  | { action: 'submit'; milestoneId: string; note?: string };
+  | { action: 'submit'; milestoneId: string; note?: string }
+  | { action: 'request_changes'; milestoneId: string; feedback: string };
 
 export class ConflictError extends Error {}
 
@@ -134,7 +156,7 @@ export function act(id: string, a: Action, owner: string) {
         if (area !== p.area) findings.push(`Measured ${area} sq ft on site (you estimated ${p.area}${pct ? `, ${pct > 0 ? '+' : ''}${pct}%` : ''}).`);
         if (drain !== p.drainFt) findings.push(`Measured drain/septic distance: ${drain} ft (you estimated ${p.drainFt ?? 'unknown'}).`);
         p.area = area; p.drainFt = drain;
-        p.estimate = estimate({ typeId: p.typeId, city: p.city, area, tier: p.tier, drainFt: drain });
+        p.estimate = estimate({ typeId: p.typeId, city: p.city, area, tier: p.tier, drainFt: drain, rooms: p.rooms, finishes: p.finishes });
       } else {
         findings.push(`Measured on site: ${p.area} sq ft — matches your estimate.`);
       }
@@ -184,10 +206,21 @@ export function act(id: string, a: Action, owner: string) {
       } else if (a.action === 'submit') {
         if (m.status !== 'in_progress') throw new ConflictError('Milestone is not in progress');
         // An owner who can't visit the site is asked to pay on the strength of this evidence, so it is mandatory.
-        if (!(p.photos ?? []).some((ph) => ph.milestoneId === m.id)) throw new ConflictError('Add at least one site photo as proof of work');
+        // After a change request, the old photos don't count: the fix needs fresh evidence.
+        if (!(p.photos ?? []).some((ph) => ph.milestoneId === m.id && (!m.feedbackAt || ph.at > m.feedbackAt))) {
+          throw new ConflictError(m.feedbackAt ? 'Add a new photo showing the requested changes' : 'Add at least one site photo as proof of work');
+        }
         const note = 'note' in a && typeof a.note === 'string' ? a.note.trim().slice(0, 500) : '';
         m.crewNote = note || undefined;
         m.status = 'in_review'; log(`${m.pro.name} submitted for your review: ${m.name}`);
+      } else if (a.action === 'request_changes') {
+        if (m.status !== 'in_review') throw new ConflictError('There is nothing to review yet');
+        const feedback = String(a.feedback ?? '').trim().slice(0, 500);
+        if (feedback.length < 5) throw new ValidationError('Tell the crew what needs to change');
+        if ((m.revisions ?? 0) >= MAX_REVISIONS) throw new ConflictError('Maximum revisions reached — contact Housy support to resolve this');
+        m.revisions = (m.revisions ?? 0) + 1;
+        m.feedback = feedback; m.feedbackAt = now(); m.status = 'in_progress'; m.crewNote = undefined;
+        log(`You asked ${m.pro.name} for changes to "${m.name}" (round ${m.revisions} of ${MAX_REVISIONS}): ${feedback}`);
       } else {
         if (m.status !== 'in_review') throw new ConflictError('Nothing to approve yet');
         m.status = 'paid'; p.paid += m.amount; log(`You approved "${m.name}" — ₹${m.amount.toLocaleString('en-IN')} released`);

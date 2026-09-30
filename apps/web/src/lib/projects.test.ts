@@ -37,6 +37,26 @@ describe('validateCreate', () => {
   });
 });
 
+describe('interiors scope validation', () => {
+  const v = (over: object) => () => validateCreate({ typeId: 'interiors-full', city: 'bareilly', area: 1000, tier: 'standard', name: 'R', phone: '9811122233', slot: slot(), style: 'Modern', ...over } as any);
+  it('accepts a room subset and finish choices', () => {
+    const r = v({ rooms: ['living', 'living', 'kitchen'], finishes: { shutter: 'acrylic', lighting: 'designer' } })();
+    expect(r.rooms).toEqual(['living', 'kitchen']);
+    expect(r.finishes).toEqual({ shutter: 'acrylic', lighting: 'designer' });
+  });
+  it('rejects empty/unknown rooms and unknown finishes', () => {
+    expect(v({ rooms: [] })).toThrow(/at least one room/);
+    expect(v({ rooms: ['moat'] })).toThrow(/Unknown room/);
+    expect(v({ finishes: { shutter: 'gold' } })).toThrow(/option/);
+    expect(v({ finishes: { shutter: 42 } })).toThrow(/option/);
+  });
+  it('ignores rooms/finishes on project types that do not have them', () => {
+    const r = validateCreate({ typeId: 'new-bathroom', city: 'bareilly', area: 45, tier: 'standard', name: 'R', phone: '9811122233', slot: slot(), rooms: ['living'], finishes: { shutter: 'pu' } } as any);
+    expect(r.rooms).toBeUndefined();
+    expect(r.finishes).toBeUndefined();
+  });
+});
+
 describe('project lifecycle', () => {
   useTempStore();
 
@@ -178,6 +198,49 @@ describe('project lifecycle', () => {
     await expect(act('HSY-NOPE00', { action: 'cancel' }, OWNER)).rejects.toThrow(NotFoundError);
     expect((await getProject(p.id, OWNER))!.status).toBe('visit_scheduled'); // untouched
     expect(await listProjects(OWNER)).toHaveLength(1);
+  });
+
+  it('the chosen rooms and finishes are priced in, and survive on-site re-measurement', async () => {
+    const mk = (over: object) => createProject(validateCreate({ typeId: 'interiors-full', city: 'bareilly', area: 1000, tier: 'standard', name: 'R', phone: '9811122233', slot: slot(), style: 'Modern', ...over } as any), OWNER);
+    const whole = await mk({});
+    const scoped = await mk({ rooms: ['living', 'kitchen'], finishes: { shutter: 'pu' } });
+    expect(scoped.estimate.total).toBeLessThan(whole.estimate.total);
+    expect(scoped.estimate.rooms).toHaveLength(2);
+    const q = await act(scoped.id, { action: 'complete_visit', measuredArea: 1200 }, OWNER);
+    expect(q.rooms).toEqual(['living', 'kitchen']);
+    expect(q.estimate.rooms).toHaveLength(2);
+    expect(q.quote!.total).toBeGreaterThan(Math.round(scoped.estimate.total / 500) * 500);
+  });
+
+  it('design review: the owner can send work back, only up to 3 times, and each fix needs a fresh photo', async () => {
+    const p = await createProject(input(), OWNER);
+    await act(p.id, { action: 'complete_visit' }, OWNER);
+    const a = await act(p.id, { action: 'accept_quote' }, OWNER);
+    const m = a.milestones[0];
+    await expect(act(p.id, { action: 'request_changes', milestoneId: m.id, feedback: 'Please redo the corner' }, OWNER)).rejects.toThrow(ConflictError); // nothing to review yet
+    await act(p.id, { action: 'start', milestoneId: m.id }, OWNER);
+    await addPhoto(p.id, OWNER, m.id, PNG, 'png', 'v1');
+    await act(p.id, { action: 'submit', milestoneId: m.id }, OWNER);
+
+    await expect(act(p.id, { action: 'request_changes', milestoneId: m.id, feedback: 'no' }, OWNER)).rejects.toThrow(ValidationError);
+    const r1 = await act(p.id, { action: 'request_changes', milestoneId: m.id, feedback: 'Slope looks too shallow' }, OWNER);
+    expect(r1.milestones[0]).toMatchObject({ status: 'in_progress', revisions: 1, feedback: 'Slope looks too shallow', crewNote: undefined });
+    await expect(act(p.id, { action: 'submit', milestoneId: m.id }, OWNER)).rejects.toThrow(/new photo/);   // old photo doesn't count
+    await new Promise((r) => setTimeout(r, 5));
+    await addPhoto(p.id, OWNER, m.id, PNG, 'png', 'v2');
+    await act(p.id, { action: 'submit', milestoneId: m.id }, OWNER);
+
+    for (let round = 2; round <= 3; round++) {
+      await act(p.id, { action: 'request_changes', milestoneId: m.id, feedback: `Round ${round} changes please` }, OWNER);
+      await new Promise((r) => setTimeout(r, 5));
+      await addPhoto(p.id, OWNER, m.id, PNG, 'png');
+      await act(p.id, { action: 'submit', milestoneId: m.id }, OWNER);
+    }
+    await expect(act(p.id, { action: 'request_changes', milestoneId: m.id, feedback: 'One more time please' }, OWNER)).rejects.toThrow(/Maximum revisions/);
+    const done = await act(p.id, { action: 'approve', milestoneId: m.id }, OWNER);   // approving is still possible
+    expect(done.milestones[0].status).toBe('paid');
+    await expect(act(p.id, { action: 'request_changes', milestoneId: m.id, feedback: 'Too late now' }, OWNER)).rejects.toThrow(ConflictError);
+    await expect(act(p.id, { action: 'request_changes', milestoneId: m.id, feedback: 'Stranger' }, OTHER)).rejects.toThrow(NotFoundError);
   });
 
   it('interiors and new-house projects are assigned a designer / architect', async () => {
