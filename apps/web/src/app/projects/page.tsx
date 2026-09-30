@@ -1,17 +1,35 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { listProjects } from '@/lib/projects';
 import { getType, inr } from '@/lib/catalog';
 import { cityOrDefault } from '@/lib/cities';
+import { useAuth } from '@/lib/auth-context';
+import { LoginForm } from '@/lib/LoginForm';
+import type { Project } from '@/lib/projects';
 
-export const dynamic = 'force-dynamic';
 const STATUS = { visit_scheduled: 'Visit scheduled', quote_ready: 'Quote ready', active: 'In progress', completed: 'Completed' } as const;
 
-export default async function Projects() {
-  const projects = await listProjects();
+export default function Projects() {
+  const { user } = useAuth();
+  const [projects, setProjects] = useState<Project[] | null>(null);
+
+  useEffect(() => {
+    if (!user) { setProjects(null); return; }
+    let live = true;
+    fetch('/api/projects').then((r) => r.json()).then((d) => live && setProjects(Array.isArray(d) ? d : []));
+    return () => { live = false; };
+  }, [user]);
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <h1 className="text-3xl font-black tracking-tight text-slate-900">My projects</h1>
-      {projects.length === 0 ? (
+      {user === undefined ? <p className="mt-6 text-slate-500">Loading…</p> : !user ? (
+        <div className="mt-6 max-w-md rounded-2xl border border-slate-200 bg-white p-5">
+          <p className="mb-3 text-slate-600">Log in with your mobile number to see your projects.</p>
+          <LoginForm />
+        </div>
+      ) : projects === null ? <p className="mt-6 text-slate-500">Loading…</p> : projects.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
           <p className="text-slate-600">No projects yet.</p>
           <Link href="/#services" className="mt-3 inline-block font-bold text-[#E05A2B]">Plan your first project →</Link>

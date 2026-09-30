@@ -1,5 +1,5 @@
-import { promises as fs } from 'fs';
-import path from 'path';
+import { readJson, withJson } from './kv';
+import { normalizePhone } from './phone';
 import { estimate, getType, type Estimate, type Tier } from './catalog';
 import { proForTrade, visitExpert, type Pro } from './pros';
 import { getCity } from './cities';
@@ -13,7 +13,7 @@ export interface Milestone {
   status: MilestoneStatus; pro: Pro; updatedAt?: string;
 }
 export interface Project {
-  id: string; createdAt: string; status: ProjectStatus;
+  id: string; owner: string; createdAt: string; status: ProjectStatus;
   typeId: string; city: string; area: number; tier: Tier; drainFt?: number; notes?: string;
   contact: { name: string; phone: string };
   estimate: Estimate;
@@ -24,26 +24,16 @@ export interface Project {
   timeline: { at: string; text: string }[];
 }
 
-// ── Store: JSON file. Swap this module for Supabase without touching callers. ──
-const FILE = path.join(process.cwd(), '.data', 'db.json');
-let lock: Promise<unknown> = Promise.resolve();
+// ── Store: JSON file (see kv.ts). Swap this section for Supabase without touching callers. ──
+const tx = <T,>(fn: (all: Project[]) => Promise<T> | T) => withJson<Project[], T>('db', () => [], fn);
 
-async function read(): Promise<Project[]> {
-  try { return JSON.parse(await fs.readFile(FILE, 'utf8')); } catch { return []; }
+// Ownership is enforced here so no caller can forget it. A project you don't own looks exactly like one that doesn't exist.
+export async function listProjects(owner: string) {
+  return (await readJson<Project[]>('db', [])).filter((p) => p.owner === owner).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
-async function write(all: Project[]) {
-  await fs.mkdir(path.dirname(FILE), { recursive: true });
-  await fs.writeFile(FILE, JSON.stringify(all, null, 2));
+export async function getProject(id: string, owner: string) {
+  return (await readJson<Project[]>('db', [])).find((p) => p.id === id && p.owner === owner) ?? null;
 }
-// Serialise read-modify-write so concurrent requests can't clobber each other.
-function tx<T>(fn: (all: Project[]) => Promise<T> | T): Promise<T> {
-  const run = lock.then(async () => { const all = await read(); const r = await fn(all); await write(all); return r; });
-  lock = run.catch(() => undefined);
-  return run;
-}
-
-export const listProjects = async () => (await read()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-export const getProject = async (id: string) => (await read()).find((p) => p.id === id) ?? null;
 
 // ── Commands ─────────────────────────────────────────────────────────
 export interface CreateInput {
@@ -51,6 +41,7 @@ export interface CreateInput {
   name: string; phone: string; slot: string;
 }
 export class ValidationError extends Error {}
+export class NotFoundError extends Error {}
 
 export function validateCreate(i: Partial<CreateInput>): CreateInput {
   const type = i.typeId && getType(i.typeId);
@@ -59,25 +50,24 @@ export function validateCreate(i: Partial<CreateInput>): CreateInput {
   if (!city) throw new ValidationError('Choose a city');
   if (city.status !== 'live') throw new ValidationError(`We are not live in ${city.name} yet — join the waitlist and we will tell you first`);
   if (!i.name?.trim()) throw new ValidationError('Name is required');
-  const digits = (i.phone ?? '').replace(/[\s-]/g, '');
-  const local = digits.length > 10 ? digits.replace(/^(\+91|91|0)/, '') : digits; // only strip a prefix when there is one
-  if (!/^[6-9]\d{9}$/.test(local)) throw new ValidationError('Enter a valid 10-digit Indian mobile number');
+  const sitePhone = normalizePhone(i.phone);
+  if (!sitePhone) throw new ValidationError('Enter a valid 10-digit Indian mobile number');
   if (!i.slot || Number.isNaN(Date.parse(i.slot))) throw new ValidationError('Pick a visit slot');
   if (!i.tier || !['economy', 'standard', 'premium'].includes(i.tier)) throw new ValidationError('Invalid quality tier');
   const area = Number(i.area);
   if (!(area >= 5 && area <= 20000)) throw new ValidationError('Area looks wrong');
-  return { ...(i as CreateInput), city: city.id, area, drainFt: i.drainFt == null ? undefined : Math.max(0, Number(i.drainFt)) };
+  return { ...(i as CreateInput), city: city.id, phone: sitePhone, area, drainFt: i.drainFt == null ? undefined : Math.max(0, Number(i.drainFt)) };
 }
 
 const now = () => new Date().toISOString();
 const newId = () => 'HSY-' + Math.random().toString(36).slice(2, 8).toUpperCase();
 
-export function createProject(input: CreateInput) {
+export function createProject(input: CreateInput, owner: string) {
   return tx((all) => {
     const type = getType(input.typeId)!;
     const est = estimate({ typeId: input.typeId, city: input.city, area: input.area, tier: input.tier, drainFt: input.drainFt });
     const p: Project = {
-      id: newId(), createdAt: now(), status: 'visit_scheduled',
+      id: newId(), owner, createdAt: now(), status: 'visit_scheduled',
       typeId: input.typeId, city: input.city, area: input.area, tier: input.tier, drainFt: input.drainFt, notes: input.notes,
       contact: { name: input.name.trim(), phone: input.phone.trim() },
       estimate: est,
@@ -99,10 +89,10 @@ export type Action =
 
 export class ConflictError extends Error {}
 
-export function act(id: string, a: Action) {
+export function act(id: string, a: Action, owner: string) {
   return tx((all) => {
-    const p = all.find((x) => x.id === id);
-    if (!p) throw new ValidationError('Project not found');
+    const p = all.find((x) => x.id === id && x.owner === owner);
+    if (!p) throw new NotFoundError('Project not found');
     const log = (text: string) => p.timeline.unshift({ at: now(), text });
 
     if (a.action === 'complete_visit') {

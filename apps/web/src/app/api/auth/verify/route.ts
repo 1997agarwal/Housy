@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { addToWaitlist } from '@/lib/waitlist';
+import { verifyOtp } from '@/lib/auth';
 import { errorResponse } from '@/lib/http';
 
 export async function POST(req: Request) {
   try {
-    const e = await addToWaitlist(await req.json());
-    return NextResponse.json({ id: e.id }, { status: 201 });
+    const b = await req.json();
+    return NextResponse.json(await verifyOtp(b.phone, b.code, b.name));
   } catch (e) { return errorResponse(e); }
 }

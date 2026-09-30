@@ -1,9 +1,11 @@
 'use client';
 
-import { use, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import { useRouter, notFound } from 'next/navigation';
 import { useCity } from '@/lib/city-context';
 import { CitySelect } from '@/lib/CitySelect';
+import { useAuth } from '@/lib/auth-context';
+import { LoginForm } from '@/lib/LoginForm';
 import { TIERS, estimate, getType, inr, inrShort, type Tier } from '@/lib/catalog';
 
 const field = 'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-[#E05A2B] focus:outline-none focus:ring-2 focus:ring-orange-200';
@@ -28,6 +30,7 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
   const slotOptions = useMemo(slots, []);
 
   const { city } = useCity();
+  const { user } = useAuth();
   const [joined, setJoined] = useState(false);
   const [area, setArea] = useState(type.defaultArea);
   const [tier, setTier] = useState<Tier>('standard');
@@ -38,6 +41,9 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
   const [slot, setSlot] = useState(slotOptions[0].value);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // Prefill the site contact from the verified account once known (never overwrite what the user typed).
+  useEffect(() => { if (user) { setName((n) => n || user.name); setPhone((p) => p || user.phone); } }, [user]);
 
   const est = useMemo(
     () => estimate({ typeId, city: city.id, area: Number(area) || 0, tier, drainFt: drain === '' ? undefined : Number(drain) }),
@@ -154,9 +160,16 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
               </div>
             </div>
             {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{error}</p>}
-            <button onClick={book} disabled={busy} className="w-full rounded-xl bg-[#E05A2B] px-6 py-3 font-bold text-white hover:bg-[#C44519] disabled:opacity-60 sm:w-auto">
-              {busy ? 'Booking…' : `Book site visit · ${inr(type.visitFee)}`}
-            </button>
+            {user ? (
+              <button onClick={book} disabled={busy} className="w-full rounded-xl bg-[#E05A2B] px-6 py-3 font-bold text-white hover:bg-[#C44519] disabled:opacity-60 sm:w-auto">
+                {busy ? 'Booking…' : `Book site visit · ${inr(type.visitFee)}`}
+              </button>
+            ) : user === null ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="mb-2 text-sm font-bold text-slate-800">Verify your mobile number to book</p>
+                <LoginForm defaultName={name} defaultPhone={phone} />
+              </div>
+            ) : null}
             <p className="text-xs text-slate-500">Visit fee is adjusted against your project if you go ahead. (Payment gateway not connected in this build.)</p>
           </section>
           )}
