@@ -2,7 +2,8 @@ import { randomUUID } from 'crypto';
 import { readJson, withJson } from './kv';
 import { normalizePhone } from './phone';
 import { estimate, getType, STYLES, type Estimate, type Tier } from './catalog';
-import { proForTrade, visitExpert, type Pro } from './pros';
+import type { Pro } from './pros';
+import { matchPro } from './matching';
 import type { Trade } from './catalog';
 import { getCity } from './cities';
 import { formatIST } from './time';
@@ -15,9 +16,11 @@ import { CHANGE_TRADES, MAX_PENDING_CHANGES, MAX_PHOTOS_PER_MILESTONE, MAX_REVIS
 export type ProjectStatus = 'visit_scheduled' | 'quote_ready' | 'active' | 'completed' | 'cancelled';
 export type MilestoneStatus = 'upcoming' | 'in_progress' | 'in_review' | 'paid';
 
+export interface Offer { status: 'pending' | 'accepted'; declined?: string[] }   // ids of crews who turned this job down
 export interface Milestone {
   id: string; phaseId: string; name: string; days: number; amount: number;
   status: MilestoneStatus; pro: Pro; updatedAt?: string;
+  offer?: Offer;             // crews who registered themselves must accept the job; seed crews are assigned outright
   crewNote?: string;         // the crew's message when they submit the work for review
   revisions?: number;        // how many times the owner sent this milestone back for changes
   feedback?: string;         // the owner's latest change request
@@ -138,7 +141,8 @@ const MAX_SLOT_DAYS = 60;
 const now = () => new Date().toISOString();
 const newId = () => 'HSY-' + Math.random().toString(36).slice(2, 8).toUpperCase();
 
-export function createProject(input: CreateInput, owner: string) {
+export async function createProject(input: CreateInput, owner: string) {
+  const expert = await matchPro(input.city, getType(input.typeId)!.expert ?? (getType(input.typeId)!.needsEngineer ? 'engineer' : 'mason'), { typeId: input.typeId });
   return tx((all) => {
     const type = getType(input.typeId)!;
     const est = estimate({ typeId: input.typeId, city: input.city, area: input.area, tier: input.tier, drainFt: input.drainFt, rooms: input.rooms, finishes: input.finishes });
@@ -147,7 +151,7 @@ export function createProject(input: CreateInput, owner: string) {
       typeId: input.typeId, city: input.city, area: input.area, tier: input.tier, drainFt: input.drainFt, notes: input.notes, style: input.style, propertyValueLakh: input.propertyValueLakh, rooms: input.rooms, finishes: input.finishes,
       contact: { name: input.name.trim(), phone: input.phone.trim() },
       estimate: est,
-      visit: { slot: input.slot, fee: type.visitFee, expert: visitExpert(input.city, type.expert ?? (type.needsEngineer ? 'engineer' : 'mason')), done: false },
+      visit: { slot: input.slot, fee: type.visitFee, expert, done: false },
       milestones: [], paid: 0,
       timeline: [{ at: now(), text: `${type.visitLabel} booked for ${formatIST(input.slot)}` }],
     };
@@ -184,7 +188,23 @@ function completeIfDone(p: Project, log: (t: string) => void) {
   }
 }
 
-export function act(id: string, a: Action, owner: string) {
+// Who Housy matches for the work an action creates or prices. Looked up before the store lock is taken because matching reads
+// other files; it is advisory, so a crew approved a moment later simply isn't considered until the next job.
+async function bookFor(id: string, a: Action, owner: string): Promise<Map<Trade, Pro>> {
+  const book = new Map<Trade, Pro>();
+  const p = await getProject(id, owner);
+  if (!p) return book;
+  let trades: Trade[] = [];
+  if (a.action === 'accept_quote') trades = p.estimate.phases.map((ph) => ph.trade);
+  else if (a.action === 'request_change' && (CHANGE_TRADES as readonly string[]).includes(a.trade)) trades = [a.trade as Trade];
+  else if (a.action === 'price_change' || a.action === 'approve_change') { const c = p.changes?.find((x) => x.id === a.changeId); if (c) trades = [c.trade]; }
+  for (const t of new Set(trades)) book.set(t, await matchPro(p.city, t, { typeId: p.typeId }));
+  return book;
+}
+const offerFor = (pro: Pro): Offer | undefined => (pro.partnerId ? { status: 'pending' } : undefined);
+
+export async function act(id: string, a: Action, owner: string) {
+  const book = await bookFor(id, a, owner);
   return tx((all) => {
     const p = all.find((x) => x.id === id && x.owner === owner);
     if (!p) throw new NotFoundError('Project not found');
@@ -247,7 +267,7 @@ export function act(id: string, a: Action, owner: string) {
         // Last milestone absorbs rounding so amounts always sum to the quote.
         const amt = i === arr.length - 1 ? remaining - assigned : Math.round((remaining * ph.subtotal) / phaseTotal / moneyStep(q.total)) * moneyStep(q.total);
         assigned += amt;
-        return { id: `${p.id}-M${i + 1}`, phaseId: ph.id, name: ph.name, days: ph.days, amount: amt, status: 'upcoming' as const, pro: proForTrade(p.city, ph.trade) };
+        return { id: `${p.id}-M${i + 1}`, phaseId: ph.id, name: ph.name, days: ph.days, amount: amt, status: 'upcoming' as const, pro: book.get(ph.trade)!, offer: offerFor(book.get(ph.trade)!) };
       });
       q.accepted = true; p.status = 'active'; p.paid = q.advance;
       log(`Quote accepted — advance of ₹${q.advance.toLocaleString('en-IN')} paid`);
@@ -283,7 +303,6 @@ export function act(id: string, a: Action, owner: string) {
       if (description.length < 10) throw new ValidationError('Describe the change in at least 10 characters');
       if (!(CHANGE_TRADES as readonly string[]).includes(a.trade)) throw new ValidationError('Choose who should do the extra work');
       if (pendingChanges(p).length >= MAX_PENDING_CHANGES) throw new ConflictError(`Please decide on your ${MAX_PENDING_CHANGES} pending changes first`);
-      proForTrade(p.city, a.trade as Trade);   // fail early if this city has nobody for the trade
       (p.changes ??= []).push({ id: `${p.id}-C${p.changes.length + 1}`, title, description: description.slice(0, 500), trade: a.trade as Trade, status: 'requested', createdAt: now(), updatedAt: now() });
       log(`You requested a change: ${title}`);
     } else if (a.action === 'price_change') {
@@ -294,14 +313,14 @@ export function act(id: string, a: Action, owner: string) {
       if (!(amount >= 500 && amount <= (p.quote?.total ?? 0))) throw new ValidationError('Price looks wrong');
       if (!(days >= 0 && days <= 90)) throw new ValidationError('Days looks wrong');
       c.amount = Math.round(amount / 50) * 50; c.days = Math.round(days); c.status = 'quoted'; c.updatedAt = now();
-      log(`${proForTrade(p.city, c.trade).name} priced "${c.title}" at ₹${c.amount.toLocaleString('en-IN')}`);
+      log(`${book.get(c.trade)!.name} priced "${c.title}" at ₹${c.amount.toLocaleString('en-IN')}`);
     } else if (a.action === 'approve_change' || a.action === 'decline_change') {
       if (p.status !== 'active') throw new ConflictError('Project is not active');
       const c = p.changes?.find((x) => x.id === a.changeId);
       if (!c) throw new ValidationError('Change not found');
       if (a.action === 'approve_change') {
         if (c.status !== 'quoted') throw new ConflictError('There is no price to approve yet');
-        p.milestones.push({ id: `${p.id}-M${p.milestones.length + 1}`, phaseId: `change-${c.id}`, name: `Change: ${c.title}`, days: c.days ?? 1, amount: c.amount!, status: 'upcoming', pro: proForTrade(p.city, c.trade) });
+        p.milestones.push({ id: `${p.id}-M${p.milestones.length + 1}`, phaseId: `change-${c.id}`, name: `Change: ${c.title}`, days: c.days ?? 1, amount: c.amount!, status: 'upcoming', pro: book.get(c.trade)!, offer: offerFor(book.get(c.trade)!) });
         p.quote!.total += c.amount!;
         c.status = 'approved'; log(`You approved the change "${c.title}" (+₹${c.amount!.toLocaleString('en-IN')}) — new total ₹${p.quote!.total.toLocaleString('en-IN')}`);
       } else {
@@ -318,6 +337,7 @@ export function act(id: string, a: Action, owner: string) {
       const m = p.milestones[idx];
       if (a.action === 'start') {
         if (m.status !== 'upcoming') throw new ConflictError('Milestone already started');
+        if (m.offer?.status === 'pending') throw new ConflictError(`Waiting for ${m.pro.name} to accept this job`);
         if (p.milestones.slice(0, idx).some((x) => x.status !== 'paid')) throw new ConflictError('Finish and approve earlier milestones first');
         m.status = 'in_progress'; log(`${m.pro.name} started: ${m.name}`);
       } else if (a.action === 'submit') {

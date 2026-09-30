@@ -59,7 +59,7 @@ export default function Workers() {
                 </div>
                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">{t('wk.verified')}</span>
               </div>
-              <p className="mt-3 text-sm text-slate-700">{p.realReviews ? t('wk.statsReal', { rating: p.avgRating, n: p.reviewCount, real: p.realReviews, yrs: p.years, crew: p.crew }) : t('wk.stats', { rating: p.avgRating, n: p.reviewCount, yrs: p.years, crew: p.crew })}</p>
+              <p className="mt-3 text-sm text-slate-700">{p.reviewCount === 0 ? t('wk.statsNew', { yrs: p.years, crew: p.crew }) : p.realReviews ? t('wk.statsReal', { rating: p.avgRating, n: p.reviewCount, real: p.realReviews, yrs: p.years, crew: p.crew }) : t('wk.stats', { rating: p.avgRating, n: p.reviewCount, yrs: p.years, crew: p.crew })}</p>
               <p className="mt-1 text-sm text-slate-700">{p.dayRate ? t('wk.perDay', { rate: inr(p.dayRate) }) : t('wk.perVisit')} · {t('wk.id', { id: p.housyId })}</p>
               {p.recent.length > 0 && (
                 <details className="mt-3 text-sm">

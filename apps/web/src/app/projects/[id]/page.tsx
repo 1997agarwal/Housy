@@ -116,7 +116,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               <h2 className="font-extrabold">{t('pj.booked', { what: t(type.visitLabel === 'Design consultation' ? 'visit.design' : type.visitLabel === 'Plot visit' ? 'visit.plot' : 'visit.site') })}</h2>
               <p className="mt-1 text-slate-600">{formatIST(p.visit.slot, loc, { dateStyle: 'full', timeStyle: 'short' })}</p>
               <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm">
-                <b>{p.visit.expert.name}</b> · {lang === 'hi' ? t(`trade.${p.visit.expert.trade}` as Key) : p.visit.expert.role} · ⭐ {p.visit.expert.rating} ({p.visit.expert.reviews}) · {t('pj.expertInfo', { id: p.visit.expert.housyId })}
+                <b>{p.visit.expert.name}</b> · {lang === 'hi' ? t(`trade.${p.visit.expert.trade}` as Key) : p.visit.expert.role} · {p.visit.expert.rating > 0 ? `⭐ ${p.visit.expert.rating} (${p.visit.expert.reviews})` : `🆕 ${t('pt.new')}`} · {t('pj.expertInfo', { id: p.visit.expert.housyId })}
               </div>
               <p className="mt-3 text-sm text-slate-600">{t('pj.visitDesc')}</p>
               <div className="mt-4 rounded-xl border border-dashed border-slate-300 p-3">
@@ -181,14 +181,15 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
                           <p className="font-bold">{i + 1}. {phaseName(p.typeId, m.phaseId, m.name, lang === 'hi')}</p>
-                          <p className="text-sm text-slate-600">{m.pro.name} · {lang === 'hi' ? t(`trade.${m.pro.trade}` as Key) : m.pro.role} · {t('pj.msMeta', { rating: m.pro.rating, n: m.pro.crew, days: m.days })}</p>
+                          <p className="text-sm text-slate-600">{m.pro.name} · {lang === 'hi' ? t(`trade.${m.pro.trade}` as Key) : m.pro.role} · {t('pj.msMeta', { rating: m.pro.rating > 0 ? m.pro.rating : t('pt.new'), n: m.pro.crew, days: m.days })}</p>
                         </div>
                         <div className="text-right">
                           <p className="font-bold">{inr(m.amount)}</p>
                           <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${MS_STYLE[m.status]}`}>{t(`pj.ms.${m.status}` as Key)}</span>
                         </div>
                       </div>
-                      {m.status === 'upcoming' && prevDone && p.status === 'active' && (
+                      {m.offer?.status === 'pending' && <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">⏳ {t('pt.waitingAccept', { name: m.pro.name })}</p>}
+                      {m.status === 'upcoming' && prevDone && p.status === 'active' && m.offer?.status !== 'pending' && (
                         <button className={`${btn} mt-3`} disabled={busy} onClick={() => send({ action: 'start', milestoneId: m.id })}>{t('pj.simStart')}</button>
                       )}
                       {(p.photos ?? []).some((ph) => ph.milestoneId === m.id) && <PhotoStrip projectId={p.id} kind={isDesign(m) ? 'design' : 'site'} photos={(p.photos ?? []).filter((ph) => ph.milestoneId === m.id)} />}

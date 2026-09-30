@@ -24,6 +24,13 @@ const f = (s: string) => FIELD[s] ?? s;
 const CRITERION: Record<string, string> = { 'quality of work': 'काम की गुणवत्ता', punctuality: 'समय की पाबंदी', behaviour: 'व्यवहार', 'value for money': 'पैसे का मूल्य' };
 
 const EXACT: Record<string, string> = {
+  // ── partners (crews & designers) and job offers ──
+  'Job not found': 'काम नहीं मिला', 'There is nobody else to offer this job to — please contact Housy support': 'इस काम के लिए कोई और उपलब्ध नहीं है — कृपया Housy सहायता से संपर्क करें',
+  'You already accepted this job': 'आप यह काम पहले ही स्वीकार कर चुके हैं', 'This job has already started': 'यह काम शुरू हो चुका है', 'Choose accept or decline': 'स्वीकार करें या अस्वीकार करें चुनें',
+  'Send your details as an object': 'अपनी जानकारी सही रूप में भेजें', 'Choose whether you are a crew or a designer': 'चुनें कि आप क्रू हैं या डिज़ाइनर',
+  'Enter your name or firm name': 'अपना नाम या फ़र्म का नाम डालें', 'Choose the city you work in': 'वह शहर चुनें जहाँ आप काम करते हैं', 'Enter your area or locality': 'अपना इलाका या मोहल्ला डालें',
+  'Choose at least one trade you work in': 'कम से कम एक काम (ट्रेड) चुनें जिसमें आप काम करते हैं', 'Choose whether you are an interior designer, an architect or both': 'चुनें कि आप इंटीरियर डिज़ाइनर हैं, आर्किटेक्ट हैं या दोनों',
+  'Partner not found': 'पार्टनर नहीं मिला', 'Unknown status': 'अज्ञात स्थिति', 'Register your listing first': 'पहले अपनी लिस्टिंग रजिस्टर करें', 'Your listing is not approved yet': 'आपकी लिस्टिंग अभी मंज़ूर नहीं हुई है',
   // ── client-side fallbacks when the server sent no message ──
   'Couldn’t load messages — check your connection.': 'संदेश लोड नहीं हो सके — कनेक्शन जाँचें।', 'That recording is too large — keep it shorter.': 'वह रिकॉर्डिंग बहुत बड़ी है — छोटी रखें।', 'Could not reach Housy — your message was not sent.': 'Housy तक नहीं पहुँच सके — आपका संदेश नहीं भेजा गया।',
   'Could not save — please try again': 'सेव नहीं हो सका — कृपया फिर कोशिश करें', 'Could not save': 'सेव नहीं हो सका', 'Could not book': 'बुकिंग नहीं हो सकी', 'Could not join waitlist': 'वेटलिस्ट में नहीं जुड़ सके',
@@ -82,6 +89,12 @@ const EXACT: Record<string, string> = {
 
 type Rule = [RegExp, (m: RegExpMatchArray) => string];
 const RULES: Rule[] = [
+  [/^Your listing is already set up as a (.+)$/, (m) => `आपकी लिस्टिंग पहले से ${m[1] === 'crew' ? 'क्रू' : m[1] === 'designer' ? 'डिज़ाइनर' : m[1]} के रूप में बनी है`],
+  [/^(Day rate|Design fee per sq ft|Crew size|Years of experience) must be between (\d+) and (\d+)$/, (m) => `${({ 'Day rate': 'दिन का रेट', 'Design fee per sq ft': 'प्रति वर्ग फ़ुट डिज़ाइन फ़ीस', 'Crew size': 'टीम का आकार', 'Years of experience': 'अनुभव के साल' } as Record<string, string>)[m[1]]} ${m[2]} से ${m[3]} के बीच होना चाहिए`],
+  [/^Waiting for (.+) to accept this job$/, (m) => `${m[1]} के इस काम को स्वीकार करने का इंतज़ार है`],
+  [/^(.+) accepted the job: (.+)$/, (m) => `${m[1]} ने काम स्वीकार किया: ${phase(m[2])}`],
+  [/^(.+) could not take the job: (.+)$/, (m) => `${m[1]} यह काम नहीं ले सके: ${phase(m[2])}`],
+  [/^(.+) was matched for: (.+)$/, (m) => `${m[1]} को इस काम के लिए चुना गया: ${phase(m[2])}`],
   [/^🎤 Voice note \((\d+)s\)$/, (m) => `🎤 वॉइस नोट (${m[1]} सेकंड)`],
   [/^Resolved: ([\s\S]+)$/, (m) => `सुलझाया गया: ${m[1]}`],
   [/^Unknown project type: (.+)$/, (m) => `अज्ञात प्रोजेक्ट प्रकार: ${m[1]}`],

@@ -73,7 +73,7 @@ export async function withStats(pros: Pro[]): Promise<ProWithStats[]> {
     const sum = mine.reduce((a, r) => a + r.overall, 0);
     const n = p.reviews + mine.length;
     return {
-      ...p, avgRating: Math.round(((p.rating * p.reviews + sum) / n) * 10) / 10, reviewCount: n, realReviews: mine.length,
+      ...p, avgRating: n === 0 ? 0 : Math.round(((p.rating * p.reviews + sum) / n) * 10) / 10, reviewCount: n, realReviews: mine.length,
       recent: mine.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3).map(publicView),
     };
   });

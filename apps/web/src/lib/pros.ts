@@ -5,6 +5,7 @@ import { getCity } from './cities';
 export interface Pro {
   id: string; city: string; locality: string; name: string; role: string; trade: Trade;
   rating: number; reviews: number; crew: number; years: number; dayRate: number; housyId: string;
+  partnerId?: string;   // set for crews/designers who registered themselves (seed crews have none); rating 0 = new, no reviews yet
 }
 
 const p = (id: string, city: string, locality: string, name: string, role: string, trade: Trade,

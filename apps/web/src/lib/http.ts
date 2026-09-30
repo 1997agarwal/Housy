@@ -6,6 +6,7 @@ import { NoCoverageError } from './pros';
 import { ProfileError } from './profile';
 import { RateLimitedError } from './chat';
 import { PlanError } from './plan-shared';
+import { PartnerError } from './partners-shared';
 
 export class PayloadTooLargeError extends Error {}
 
@@ -35,7 +36,7 @@ export async function readBody(req: Request, maxBytes = 64 * 1024): Promise<Reco
 export function errorResponse(e: unknown): NextResponse {
   const status =
     e instanceof AuthError ? e.status :
-    e instanceof ValidationError || e instanceof ProfileError || e instanceof PlanError || e instanceof SyntaxError ? 400 :
+    e instanceof ValidationError || e instanceof PartnerError || e instanceof ProfileError || e instanceof PlanError || e instanceof SyntaxError ? 400 :
     e instanceof NotFoundError ? 404 :
     e instanceof ConflictError || e instanceof NoCoverageError ? 409 :
     e instanceof PayloadTooLargeError ? 413 :

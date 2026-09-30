@@ -6,6 +6,8 @@ import { LoadError } from '@/lib/LoadError';
 import { getType, inrShort } from '@/lib/catalog';
 import { ISSUE_TYPES } from '@/lib/issues-shared';
 import type { OpsIssue } from '@/lib/issues';
+import { CITIES } from '@/lib/cities';
+import type { Partner, PartnerStatus } from '@/lib/partners-shared';
 
 interface Summary {
   totals: { projects: number; waitlist: number; accepted: number };
@@ -22,6 +24,14 @@ export default function Admin() {
   const [issues, setIssues] = useState<OpsIssue[]>([]);
   const [text, setText] = useState<Record<string, string>>({});
   const [err, setErr] = useState('');
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const loadPartners = () => fetch('/api/admin/partners').then(async (r) => r.ok && setPartners(await r.json())).catch(() => undefined);
+  async function decide(id: string, status: PartnerStatus) {
+    setErr('');
+    const r = await fetch('/api/admin/partners', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status, note: notes[id] }) });
+    if (!r.ok) setErr((await r.json()).error || 'Failed'); else { setNotes((n) => ({ ...n, [id]: '' })); loadPartners(); }
+  }
   const loadIssues = () => fetch('/api/admin/issues').then(async (r) => r.ok && setIssues(await r.json())).catch(() => undefined);
   async function act(id: string, body: object) {
     setErr('');
@@ -35,7 +45,7 @@ export default function Admin() {
     fetch('/api/admin')
       .then(async (r) => { if (r.ok) setData(await r.json()); else if (r.status === 401 || r.status === 403) setDenied(true); else throw new Error(String(r.status)); })
       .catch(() => setLoadErr(true));
-    loadIssues();
+    loadIssues(); loadPartners();
   }, [user, tick]);
 
   if (user === undefined) return <div className="mx-auto max-w-5xl px-4 py-10 text-slate-500">Loading…</div>;
@@ -51,6 +61,28 @@ export default function Admin() {
           <div key={l as string} className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-xs font-bold uppercase text-slate-500">{l}</p><p className="text-3xl font-black">{v}</p></div>
         ))}
       </div>
+      <h2 className="mt-8 font-extrabold text-slate-900">Crew &amp; designer verification <span className="text-sm font-normal text-slate-500">({partners.filter((p) => p.status === 'pending').length} waiting, {partners.filter((p) => p.status === 'approved').length} live)</span></h2>
+      <p className="text-sm text-slate-600">Approve only after a field agent has met the person and checked their work. Approving issues the Housy ID and makes them matchable.</p>
+      <ul className="mt-3 space-y-3">
+        {partners.length === 0 && <li className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Nobody has registered yet.</li>}
+        {partners.map((p) => (
+          <li key={p.id} className="rounded-2xl border border-slate-200 bg-white p-4 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <b>{p.name}</b><span className="text-slate-500">{p.kind} · {p.trades.join(', ')} · {CITIES.find((c) => c.id === p.city)?.name ?? p.city}, {p.locality} · {p.phone}</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${p.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : p.status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'}`}>{p.status}</span>
+              {p.housyId && <span className="text-xs text-slate-500">{p.housyId}</span>}
+            </div>
+            <p className="text-slate-600">{p.kind === 'crew' ? `₹${p.dayRate}/day · team of ${p.crewSize}` : `₹${p.feePerSqft}/sq ft · ${p.styles.join(', ') || 'no styles listed'}`} · {p.years} yrs{p.services.length ? ` · takes: ${p.services.join(', ')}` : ''}</p>
+            {p.bio && <p className="text-slate-700">“{p.bio}”</p>}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <input className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" placeholder="Note (optional)" value={notes[p.id] ?? ''} onChange={(e) => setNotes((n) => ({ ...n, [p.id]: e.target.value }))} aria-label={`Note for ${p.name}`} />
+              {p.status !== 'approved' && <button className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-bold text-white" onClick={() => decide(p.id, 'approved')}>Approve</button>}
+              {p.status !== 'suspended' && <button className="rounded-lg border border-red-600 px-3 py-1.5 text-sm font-bold text-red-700" onClick={() => decide(p.id, 'suspended')}>Suspend</button>}
+            </div>
+          </li>
+        ))}
+      </ul>
+
       <h2 className="mt-8 font-extrabold text-slate-900">Support queue <span className="text-sm font-normal text-slate-500">({issues.filter((i) => i.status !== 'resolved').length} open, {issues.filter((i) => i.escalated).length} escalated)</span></h2>
       {err && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{err}</p>}
       <ul className="mt-3 space-y-3">

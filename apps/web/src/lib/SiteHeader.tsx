@@ -17,6 +17,7 @@ export function SiteHeader() {
           <Link href="/advisor" className="hover:text-slate-900">{t('nav.advisor')}</Link>
           <Link href="/workers" className="hover:text-slate-900">{t('nav.crews')}</Link>
           <Link href="/projects" className="hover:text-slate-900">{t('nav.projects')}</Link>
+          <Link href="/partner" className="hidden md:inline hover:text-slate-900">{t('nav.partner')}</Link>
           <CitySelect />
           <LangToggle />
           <UserMenu />

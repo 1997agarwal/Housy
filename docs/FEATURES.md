@@ -65,7 +65,11 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 
 ## 5. Platform
 | Persistent storage | 🟡 | JSON files in `.data/` (works locally/single server, **not serverless**). Supabase schema + `migrations/001_cities.sql` written but **never run**; app doesn't use it yet |
-| Seed crews (16 in Bareilly & Lucknow) | 🟡 | Fake names. Replace with field-agent-onboarded real crews |
+| **Crew & designer portal** (`/partner`): same phone login, register as a crew/contractor or interior designer — city, area, trades, project types wanted, day rate (crew) or ₹/sq ft + styles (designer), team size, experience, availability | ✅ | Starts **pending**; matchable only after ops approves in `/admin` (issues the Housy ID `HSY-<CITY>-P###`). Changing city/trade re-opens verification. Hindi + English |
+| **Matchmaking**: ranks seed + approved crews by rating (blended with real reviews), track record, experience and rate fit; new partners get a fair baseline + boost; near-equals are picked by **least open work** | ✅ | Pure ranking + load sharing, unit-tested (`matching.ts`). Never crosses cities |
+| **Job offers**: partner-crews receive a pending offer per milestone, accept or decline in their portal; decline re-offers to the next best match and is logged on the timeline; owner can't start a milestone that is still pending | ✅ | Crews see city/area/amount and only the customer's first name after accepting. Seed crews are assigned outright |
+| Ops approvals queue in `/admin` (approve / suspend with note) | ✅ | English-only ops console; phones masked |
+| Seed crews (16 in Bareilly & Lucknow) | 🟡 | Fake names. They still exist alongside registered partners; remove once real crews are onboarded |
 | Tests, strict typecheck, ESLint, CI (GitHub Actions) | ✅ | |
 | Error / not-found pages | ✅ | |
 | Clean-clone install & build | ✅ | Fixed a broken lockfile this pass |

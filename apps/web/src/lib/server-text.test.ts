@@ -46,7 +46,7 @@ const messages = new Map<string, string>();   // message → where it came from
 for (const f of files) {
   const src = readFileSync(f, 'utf8');
   const add = (m: string, at: number) => { if (/[A-Za-z]{3}/.test(m)) messages.set(m, `${f.replace(SRC, 'src')}:${src.slice(0, at).split('\n').length}`); };
-  for (const m of src.matchAll(/new (?:Validation|Conflict|NotFound|Auth|Profile|Plan|RateLimited|PayloadTooLarge|NoCoverage|SmsUnavailable|Chat|Upload|Issue|Review)?Error\(/g)) {
+  for (const m of src.matchAll(/new (?:Validation|Conflict|NotFound|Auth|Profile|Plan|RateLimited|PayloadTooLarge|NoCoverage|SmsUnavailable|Chat|Upload|Issue|Review|Partner)?Error\(/g)) {
     const open = m.index! + m[0].length - 1;
     for (const lit of literalsIn(src, open)) add(lit, m.index!);
   }
