@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { CITIES } from './cities';
 import { useAuth } from './auth-context';
+import { cityName, useT } from './i18n';
 import { GOALS, LANGUAGES, PERSONAS, PROPERTY_TYPES, TIMELINES, type Goal, type Profile } from './profile-shared';
 
 const field = 'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-[#E05A2B] focus:outline-none focus:ring-2 focus:ring-orange-200';
@@ -23,6 +24,7 @@ const fromProfile = (p: Profile | null | undefined, name = '', city = 'bareilly'
 // mode 'onboard' = two guided steps for new users; 'edit' = everything on one page.
 export function ProfileForm({ mode, defaultCity, onSaved }: { mode: 'onboard' | 'edit'; defaultCity?: string; onSaved: (p: Profile) => void }) {
   const { user, refresh } = useAuth();
+  const { t, lang } = useT();
   const [d, setD] = useState<Draft>(() => fromProfile(user?.profile, user?.name, defaultCity));
   const [step, setStep] = useState(mode === 'onboard' ? 1 : 0);
   const [error, setError] = useState('');
@@ -49,17 +51,17 @@ export function ProfileForm({ mode, defaultCity, onSaved }: { mode: 'onboard' | 
   const about = (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div><label className={lab} htmlFor="pname">Full name</label><input id="pname" className={field} value={d.name} onChange={(e) => set('name', e.target.value)} autoComplete="name" /></div>
-        <div><label className={lab} htmlFor="pemail">Email <span className="font-normal text-slate-500">(optional)</span></label><input id="pemail" type="email" className={field} value={d.email} onChange={(e) => set('email', e.target.value)} autoComplete="email" /></div>
+        <div><label className={lab} htmlFor="pname">{t('onb.fullName')}</label><input id="pname" className={field} value={d.name} onChange={(e) => set('name', e.target.value)} autoComplete="name" /></div>
+        <div><label className={lab} htmlFor="pemail">{t('onb.email')} <span className="font-normal text-slate-500">{t('onb.optional')}</span></label><input id="pemail" type="email" className={field} value={d.email} onChange={(e) => set('email', e.target.value)} autoComplete="email" /></div>
       </div>
       <div>
-        <span className={lab}>Where do you live?</span>
+        <span className={lab}>{t('onb.where')}</span>
         <div className="mt-1 grid gap-2 sm:grid-cols-3">
-          {Object.entries(PERSONAS).map(([k, v]) => <button key={k} type="button" aria-pressed={d.persona === k} onClick={() => set('persona', k)} className={chip(d.persona === k)}>{v}</button>)}
+          {Object.keys(PERSONAS).map((k) => <button key={k} type="button" aria-pressed={d.persona === k} onClick={() => set('persona', k)} className={chip(d.persona === k)}>{t(`persona.${k}` as never)}</button>)}
         </div>
       </div>
       <div>
-        <label className={lab} htmlFor="plang">Preferred language</label>
+        <label className={lab} htmlFor="plang">{t('onb.lang')}</label>
         <select id="plang" className={field} value={d.language} onChange={(e) => set('language', e.target.value)}>
           {Object.entries(LANGUAGES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
@@ -72,38 +74,38 @@ export function ProfileForm({ mode, defaultCity, onSaved }: { mode: 'onboard' | 
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className={lab} htmlFor="pcity">City where the property is</label>
+          <label className={lab} htmlFor="pcity">{t('onb.city')}</label>
           <select id="pcity" className={field} value={d.city} onChange={(e) => set('city', e.target.value)}>
-            {CITIES.map((c) => <option key={c.id} value={c.id}>{c.name}{c.status === 'soon' ? ' (coming soon)' : ''}</option>)}
+            {CITIES.map((c) => <option key={c.id} value={c.id}>{cityName(c, lang)}{c.status === 'soon' ? ` (${t('city.soon')})` : ''}</option>)}
           </select>
         </div>
         <div>
-          <label className={lab} htmlFor="ptype">Property type</label>
+          <label className={lab} htmlFor="ptype">{t('onb.ptype')}</label>
           <select id="ptype" className={field} value={d.propertyType} onChange={(e) => set('propertyType', e.target.value)}>
-            <option value="">Select…</option>
-            {Object.entries(PROPERTY_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            <option value="">{t('onb.select')}</option>
+            {Object.keys(PROPERTY_TYPES).map((k) => <option key={k} value={k}>{t(`ptype.${k}` as never)}</option>)}
           </select>
         </div>
         <div>
-          <label className={lab} htmlFor="parea">Approx. area (sq ft) <span className="font-normal text-slate-500">(optional)</span></label>
+          <label className={lab} htmlFor="parea">{t('onb.area')} <span className="font-normal text-slate-500">{t('onb.optional')}</span></label>
           <input id="parea" type="number" min={50} className={field} value={d.propertyAreaSqft} onChange={(e) => set('propertyAreaSqft', e.target.value)} />
         </div>
         <div>
-          <label className={lab} htmlFor="pvalue">Approx. property value (₹ lakh) <span className="font-normal text-slate-500">(optional)</span></label>
-          <input id="pvalue" type="number" min={1} className={field} value={d.propertyValueLakh} onChange={(e) => set('propertyValueLakh', e.target.value)} placeholder="e.g. 100 for ₹1 crore" />
-          <p className="mt-1 text-xs text-slate-500">Helps us suggest a realistic interiors budget.</p>
+          <label className={lab} htmlFor="pvalue">{t('onb.value')} <span className="font-normal text-slate-500">{t('onb.optional')}</span></label>
+          <input id="pvalue" type="number" min={1} className={field} value={d.propertyValueLakh} onChange={(e) => set('propertyValueLakh', e.target.value)} placeholder={t('plan.valuePh')} />
+          <p className="mt-1 text-xs text-slate-500">{t('onb.valueHint')}</p>
         </div>
       </div>
       <div>
-        <span className={lab}>What do you want to do? <span className="font-normal text-slate-500">(pick all that apply)</span></span>
+        <span className={lab}>{t('onb.goals')} <span className="font-normal text-slate-500">{t('onb.goalsHint')}</span></span>
         <div className="mt-1 grid gap-2 sm:grid-cols-3">
-          {(Object.entries(GOALS) as [Goal, string][]).map(([k, v]) => <button key={k} type="button" aria-pressed={d.goals.includes(k)} onClick={() => toggle(k)} className={chip(d.goals.includes(k))}>{d.goals.includes(k) ? '✓ ' : ''}{v}</button>)}
+          {(Object.keys(GOALS) as Goal[]).map((k) => <button key={k} type="button" aria-pressed={d.goals.includes(k)} onClick={() => toggle(k)} className={chip(d.goals.includes(k))}>{d.goals.includes(k) ? '✓ ' : ''}{t(`goal.${k}` as never)}</button>)}
         </div>
       </div>
       <div>
-        <span className={lab}>When do you want to start?</span>
+        <span className={lab}>{t('onb.when')}</span>
         <div className="mt-1 grid gap-2 sm:grid-cols-2">
-          {Object.entries(TIMELINES).map(([k, v]) => <button key={k} type="button" aria-pressed={d.timeline === k} onClick={() => set('timeline', k)} className={chip(d.timeline === k)}>{v}</button>)}
+          {Object.keys(TIMELINES).map((k) => <button key={k} type="button" aria-pressed={d.timeline === k} onClick={() => set('timeline', k)} className={chip(d.timeline === k)}>{t(`when.${k}` as never)}</button>)}
         </div>
       </div>
     </div>
@@ -111,15 +113,15 @@ export function ProfileForm({ mode, defaultCity, onSaved }: { mode: 'onboard' | 
 
   return (
     <div className="space-y-6">
-      {mode === 'onboard' && <p className="text-sm font-semibold text-slate-500">Step {step} of 2 · {step === 1 ? 'About you' : 'Your property & plans'}</p>}
+      {mode === 'onboard' && <p className="text-sm font-semibold text-slate-500">{t('onb.step', { n: step })} · {step === 1 ? t('onb.about') : t('onb.property')}</p>}
       {(mode === 'edit' || step === 1) && about}
       {(mode === 'edit' || step === 2) && property}
       {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">{error}</p>}
       <div className="flex gap-3">
-        {mode === 'onboard' && step === 2 && <button type="button" className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700" onClick={() => { setStep(1); setError(''); }}>Back</button>}
+        {mode === 'onboard' && step === 2 && <button type="button" className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700" onClick={() => { setStep(1); setError(''); }}>{t('onb.back')}</button>}
         {mode === 'onboard' && step === 1
-          ? <button type="button" className={btn} onClick={next}>Continue</button>
-          : <button type="button" className={btn} disabled={busy} onClick={save}>{busy ? 'Saving…' : mode === 'onboard' ? 'Finish sign-up' : 'Save changes'}</button>}
+          ? <button type="button" className={btn} onClick={next}>{t('onb.continue')}</button>
+          : <button type="button" className={btn} disabled={busy} onClick={save}>{busy ? t('onb.saving') : mode === 'onboard' ? t('onb.finish') : t('onb.save')}</button>}
       </div>
     </div>
   );

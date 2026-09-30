@@ -1,0 +1,129 @@
+// UI strings. English is the source of truth; Hindi must define exactly the same keys and {placeholders}
+// (messages.test.ts enforces that). Hindi copy should get a native-speaker review before launch.
+export type Lang = 'en' | 'hi';
+
+export const en = {
+  'nav.services': 'Services', 'nav.myHome': 'My home', 'nav.advisor': 'Advisor', 'nav.crews': 'Find crews', 'nav.projects': 'My projects',
+  'nav.login': 'Log in / Sign up', 'nav.logout': 'Log out', 'nav.finishSignup': 'Finish sign-up', 'nav.ops': 'Ops', 'nav.language': 'Language',
+  'city.label': 'Your property’s city', 'city.live': 'Live now', 'city.soon': 'Coming soon',
+  'footer.text': 'Housy — whole-project renovation, run for you. AI guidance is not a substitute for a licensed structural engineer.',
+  'banner.finish': 'Finish setting up your account so we can tailor prices and crews to your property.', 'banner.cta': 'Complete sign-up →',
+
+  'home.eyebrow': 'For homeowners who live far from their home',
+  'home.title': 'Build it. Renovate it. Design it. All from one place — even from another city.',
+  'home.desc': 'Urban Company fixes a tap. Housy plans and delivers the whole job — a new house, a renovation, or complete interiors — with verified experts, a fixed price, and milestone payments you approve.',
+  'home.getStarted': 'Get started', 'home.findCrews': 'Find verified crews', 'home.seeAll': 'See all projects',
+  'home.journey': 'One journey, three stages', 'home.how': 'How Housy works',
+  'how.1.t': 'Tell us the job', 'how.1.d': 'Pick a project, share size and city. Get an instant phase-wise estimate.',
+  'how.2.t': 'Expert visits your home', 'how.2.d': 'A verified expert measures the site and checks what can go wrong — you don’t need to be there.',
+  'how.3.t': 'Fixed-price quote', 'how.3.d': 'Itemised by phase, with crew, timeline and a 15% contingency shown upfront.',
+  'how.4.t': 'We run the job', 'how.4.d': 'Verified crews work in the right order. You approve each milestone with photo proof before it is paid.',
+  'grid.showing': 'Showing prices for {city}', 'grid.live': 'Live · verified crews available', 'grid.soon': 'Coming soon · estimates now, booking via waitlist',
+  'grid.from': 'from ~{price} · ~{days} days', 'grid.goal': 'Your goal', 'grid.note': 'Indicative: standard tier, typical size. Each plan page estimates your own home.',
+
+  'login.title': 'Log in or sign up', 'login.sub': 'New here? Verifying your number creates your account. No password needed.',
+  'login.name': 'Your name', 'login.phone': 'Mobile number', 'login.phonePh': '10-digit number', 'login.send': 'Send code', 'login.sending': 'Sending…',
+  'login.sentTo': 'We sent a 6-digit code to', 'login.change': 'Change number', 'login.demo': 'Demo mode — no SMS is sent. Your code is',
+  'login.code': 'Verification code', 'login.verify': 'Verify & continue', 'login.verifying': 'Verifying…',
+
+  'onb.title': 'Let’s set up your account', 'onb.sub': 'Two quick steps so we can show prices and crews for your property.',
+  'onb.step': 'Step {n} of 2', 'onb.about': 'About you', 'onb.property': 'Your property & plans',
+  'onb.fullName': 'Full name', 'onb.email': 'Email', 'onb.optional': '(optional)', 'onb.where': 'Where do you live?', 'onb.lang': 'Preferred language',
+  'onb.city': 'City where the property is', 'onb.ptype': 'Property type', 'onb.select': 'Select…', 'onb.area': 'Approx. area (sq ft)', 'onb.value': 'Approx. property value (₹ lakh)',
+  'onb.valueHint': 'Helps us suggest a realistic interiors budget.', 'onb.goals': 'What do you want to do?', 'onb.goalsHint': '(pick all that apply)', 'onb.when': 'When do you want to start?',
+  'onb.continue': 'Continue', 'onb.back': 'Back', 'onb.finish': 'Finish sign-up', 'onb.saving': 'Saving…', 'onb.save': 'Save changes',
+  'persona.local': 'I live in or near the property', 'persona.away': 'I live in another city', 'persona.nri': 'I live abroad (NRI)',
+  'ptype.house': 'Independent house', 'ptype.apartment': 'Apartment / flat', 'ptype.villa': 'Villa', 'ptype.plot': 'Plot / land', 'ptype.commercial': 'Shop / office',
+  'goal.build': 'Build a new home', 'goal.renovate': 'Renovate my home', 'goal.interiors': 'Design my interiors',
+  'when.now': 'Ready to start now', 'when.1-3m': 'In 1–3 months', 'when.3-6m': 'In 3–6 months', 'when.exploring': 'Just exploring',
+  'welcome.you': 'You’re in', 'welcome.hi': 'Welcome, {name} 👋', 'welcome.where': 'Here’s where we’d start for your property in {city}.', 'welcome.explore': 'Explore everything Housy does →',
+  'welcome.soon': 'We’re not live in {city} yet. You can still plan and get estimates now, and we’ll message you when crews are ready.',
+  'welcome.guide': 'For a property worth about ₹{value} lakh, interiors typically cost {low} – {high} (8–12% of value).',
+
+  'cat.build': 'Build a new home', 'cat.build.d': 'From approved drawings to handover.',
+  'cat.renovate': 'Renovate', 'cat.renovate.d': 'Fix, upgrade or reshape what you already have.',
+  'cat.interiors': 'Interiors', 'cat.interiors.d': 'Design and deliver the inside — kitchens, wardrobes, ceilings, lighting.',
+
+  'plan.about': '1. About the job', 'plan.city': 'City where the property is', 'plan.quality': 'Quality', 'plan.notes': 'Anything the expert should know?',
+  'plan.style': 'Design style', 'plan.rooms': 'Rooms to design', 'plan.instant': 'Instant estimate', 'plan.days': 'about {days} working days · includes 15% contingency ({amount})',
+  'plan.labor': 'Labor', 'plan.material': 'Material', 'plan.byPhase': 'By phase', 'plan.feasibility': 'Not sure it’s feasible? Run the free check first →',
+  'plan.book': '2. Book a {what} — {fee}', 'plan.yourName': 'Your name', 'plan.mobile': 'Mobile number', 'plan.slot': 'Visit slot',
+  'plan.verify': 'Verify your mobile number to book', 'plan.bookBtn': 'Book {what} · {fee}', 'plan.booking': 'Booking…',
+  'plan.notLive': 'We’re not live in {city} yet', 'plan.waitDesc': 'Your estimate above is real. We’re registering verified crews in {city} — leave your number and we’ll message you the day we can run this project.',
+  'plan.join': 'Join the {city} waitlist', 'plan.joined': 'You’re on the {city} waitlist. We’ll be in touch.',
+  'plan.roomsCount': '{n} of {total} selected',
+  'plan.notesPh': 'e.g. 30-year-old house, ground floor, courtyard on the west side', 'plan.valuePh': 'e.g. 100 for ₹1 crore',
+  'plan.drainQ': 'Distance from the new bathroom to the nearest drain / septic (ft)', 'plan.drainHint': 'Not sure? Enter 0 — the expert will measure it during the visit.',
+  'plan.visitDesc.design': 'A verified interior designer visits your home, understands how you live, and prepares your design and quote.',
+  'plan.visitDesc.site': 'A verified expert visits your property, measures it and issues a fixed quote.',
+  'plan.notPresent': 'You do not need to be present — share a contact who can open the door.',
+  'plan.feeNote': 'Fee is adjusted against your project if you go ahead. (Payment gateway not connected in this build.)',
+  'tier.economy': 'Economy', 'tier.economy.d': 'Basic fittings, functional finish', 'tier.standard': 'Standard', 'tier.standard.d': 'Branded fittings, good finish', 'tier.premium': 'Premium', 'tier.premium.d': 'Premium brands, designer finish',
+  'visit.site': 'site visit', 'visit.design': 'design consultation', 'visit.plot': 'plot visit',
+} as const;
+export type Key = keyof typeof en;
+
+export const hi: Record<Key, string> = {
+  'nav.services': 'सेवाएँ', 'nav.myHome': 'मेरा घर', 'nav.advisor': 'सलाहकार', 'nav.crews': 'कारीगर खोजें', 'nav.projects': 'मेरे प्रोजेक्ट',
+  'nav.login': 'लॉग इन / साइन अप', 'nav.logout': 'लॉग आउट', 'nav.finishSignup': 'साइन-अप पूरा करें', 'nav.ops': 'ऑप्स', 'nav.language': 'भाषा',
+  'city.label': 'आपकी प्रॉपर्टी का शहर', 'city.live': 'अभी उपलब्ध', 'city.soon': 'जल्द आ रहा है',
+  'footer.text': 'Housy — पूरे प्रोजेक्ट का रेनोवेशन, आपकी ओर से। AI की सलाह लाइसेंस्ड स्ट्रक्चरल इंजीनियर का विकल्प नहीं है।',
+  'banner.finish': 'अपना अकाउंट पूरा करें ताकि हम आपकी प्रॉपर्टी के हिसाब से दाम और कारीगर दिखा सकें।', 'banner.cta': 'साइन-अप पूरा करें →',
+
+  'home.eyebrow': 'उन मकान-मालिकों के लिए जो अपने घर से दूर रहते हैं',
+  'home.title': 'बनवाइए। सुधारिए। सजाइए। सब एक ही जगह से — दूसरे शहर में रहकर भी।',
+  'home.desc': 'Urban Company नल ठीक करता है। Housy पूरा काम संभालता है — नया घर, रेनोवेशन या पूरा इंटीरियर — वेरिफ़ाइड एक्सपर्ट, तय कीमत और आपकी मंज़ूरी से मिलने वाले माइलस्टोन पेमेंट के साथ।',
+  'home.getStarted': 'शुरू करें', 'home.findCrews': 'वेरिफ़ाइड कारीगर खोजें', 'home.seeAll': 'सभी प्रोजेक्ट देखें',
+  'home.journey': 'एक सफ़र, तीन पड़ाव', 'home.how': 'Housy कैसे काम करता है',
+  'how.1.t': 'काम बताइए', 'how.1.d': 'प्रोजेक्ट चुनिए, साइज़ और शहर बताइए। तुरंत चरण-दर-चरण अनुमान पाइए।',
+  'how.2.t': 'एक्सपर्ट आपके घर आता है', 'how.2.d': 'वेरिफ़ाइड एक्सपर्ट साइट नापता है और संभावित दिक़्क़तें जाँचता है — आपको वहाँ होने की ज़रूरत नहीं।',
+  'how.3.t': 'तय कीमत का कोटेशन', 'how.3.d': 'हर चरण का हिसाब, टीम, समय-सीमा और 15% आकस्मिक बफ़र पहले से दिखता है।',
+  'how.4.t': 'काम हम चलाते हैं', 'how.4.d': 'वेरिफ़ाइड टीमें सही क्रम में काम करती हैं। हर माइलस्टोन का पेमेंट फ़ोटो-सबूत देखकर आप मंज़ूर करते हैं।',
+  'grid.showing': '{city} के दाम दिख रहे हैं', 'grid.live': 'उपलब्ध · वेरिफ़ाइड कारीगर मौजूद', 'grid.soon': 'जल्द आ रहा है · अनुमान अभी, बुकिंग वेटलिस्ट से',
+  'grid.from': '{price} से शुरू · लगभग {days} दिन', 'grid.goal': 'आपका लक्ष्य', 'grid.note': 'सांकेतिक: स्टैंडर्ड श्रेणी, सामान्य साइज़। हर प्लान पेज आपके अपने घर का अनुमान देता है।',
+
+  'login.title': 'लॉग इन या साइन अप करें', 'login.sub': 'नए हैं? नंबर वेरिफ़ाई करते ही आपका अकाउंट बन जाता है। पासवर्ड की ज़रूरत नहीं।',
+  'login.name': 'आपका नाम', 'login.phone': 'मोबाइल नंबर', 'login.phonePh': '10 अंकों का नंबर', 'login.send': 'कोड भेजें', 'login.sending': 'भेजा जा रहा है…',
+  'login.sentTo': 'हमने 6 अंकों का कोड भेजा है:', 'login.change': 'नंबर बदलें', 'login.demo': 'डेमो मोड — कोई SMS नहीं भेजा जाता। आपका कोड है',
+  'login.code': 'वेरिफ़िकेशन कोड', 'login.verify': 'वेरिफ़ाई करें और आगे बढ़ें', 'login.verifying': 'वेरिफ़ाई हो रहा है…',
+
+  'onb.title': 'आइए आपका अकाउंट सेट करें', 'onb.sub': 'दो छोटे स्टेप, ताकि हम आपकी प्रॉपर्टी के हिसाब से दाम और कारीगर दिखा सकें।',
+  'onb.step': 'स्टेप {n} / 2', 'onb.about': 'आपके बारे में', 'onb.property': 'आपकी प्रॉपर्टी और योजना',
+  'onb.fullName': 'पूरा नाम', 'onb.email': 'ईमेल', 'onb.optional': '(वैकल्पिक)', 'onb.where': 'आप कहाँ रहते हैं?', 'onb.lang': 'पसंदीदा भाषा',
+  'onb.city': 'प्रॉपर्टी किस शहर में है', 'onb.ptype': 'प्रॉपर्टी का प्रकार', 'onb.select': 'चुनें…', 'onb.area': 'अनुमानित क्षेत्रफल (वर्ग फ़ुट)', 'onb.value': 'अनुमानित प्रॉपर्टी मूल्य (₹ लाख)',
+  'onb.valueHint': 'इससे हम इंटीरियर का सही बजट सुझा पाते हैं।', 'onb.goals': 'आप क्या करना चाहते हैं?', 'onb.goalsHint': '(जितने लागू हों चुनें)', 'onb.when': 'काम कब शुरू करना चाहते हैं?',
+  'onb.continue': 'आगे बढ़ें', 'onb.back': 'पीछे', 'onb.finish': 'साइन-अप पूरा करें', 'onb.saving': 'सेव हो रहा है…', 'onb.save': 'बदलाव सेव करें',
+  'persona.local': 'मैं प्रॉपर्टी के पास रहता/रहती हूँ', 'persona.away': 'मैं दूसरे शहर में रहता/रहती हूँ', 'persona.nri': 'मैं विदेश में रहता/रहती हूँ (NRI)',
+  'ptype.house': 'इंडिपेंडेंट घर', 'ptype.apartment': 'अपार्टमेंट / फ़्लैट', 'ptype.villa': 'विला', 'ptype.plot': 'प्लॉट / ज़मीन', 'ptype.commercial': 'दुकान / ऑफ़िस',
+  'goal.build': 'नया घर बनवाना', 'goal.renovate': 'घर का रेनोवेशन', 'goal.interiors': 'इंटीरियर डिज़ाइन',
+  'when.now': 'अभी शुरू करने को तैयार', 'when.1-3m': '1–3 महीने में', 'when.3-6m': '3–6 महीने में', 'when.exploring': 'अभी सिर्फ़ जानकारी ले रहा/रही हूँ',
+  'welcome.you': 'आप अंदर हैं', 'welcome.hi': 'स्वागत है, {name} 👋', 'welcome.where': '{city} में आपकी प्रॉपर्टी के लिए हम यहाँ से शुरू करेंगे।', 'welcome.explore': 'Housy जो कुछ करता है, सब देखें →',
+  'welcome.soon': 'हम अभी {city} में उपलब्ध नहीं हैं। आप अभी भी प्लान बना सकते हैं और अनुमान पा सकते हैं; टीमें तैयार होते ही हम आपको संदेश भेजेंगे।',
+  'welcome.guide': 'लगभग ₹{value} लाख की प्रॉपर्टी के लिए इंटीरियर पर आमतौर पर {low} – {high} ख़र्च आता है (मूल्य का 8–12%)।',
+
+  'cat.build': 'नया घर बनवाएँ', 'cat.build.d': 'अप्रूव्ड नक्शे से हैंडओवर तक।',
+  'cat.renovate': 'रेनोवेशन', 'cat.renovate.d': 'जो घर है, उसे सुधारें, बेहतर बनाएँ या नया रूप दें।',
+  'cat.interiors': 'इंटीरियर', 'cat.interiors.d': 'अंदर की डिज़ाइन और डिलीवरी — किचन, वार्डरोब, सीलिंग, लाइटिंग।',
+
+  'plan.about': '1. काम के बारे में', 'plan.city': 'प्रॉपर्टी किस शहर में है', 'plan.quality': 'क्वालिटी', 'plan.notes': 'क्या एक्सपर्ट को कुछ ख़ास जानना चाहिए?',
+  'plan.style': 'डिज़ाइन स्टाइल', 'plan.rooms': 'कौन-से कमरे डिज़ाइन करवाने हैं', 'plan.instant': 'तुरंत अनुमान', 'plan.days': 'लगभग {days} कार्य-दिवस · 15% आकस्मिक बफ़र शामिल ({amount})',
+  'plan.labor': 'मज़दूरी', 'plan.material': 'सामान', 'plan.byPhase': 'चरण के अनुसार', 'plan.feasibility': 'पक्का नहीं कि हो पाएगा? पहले मुफ़्त जाँच करें →',
+  'plan.book': '2. {what} बुक करें — {fee}', 'plan.yourName': 'आपका नाम', 'plan.mobile': 'मोबाइल नंबर', 'plan.slot': 'विज़िट का समय',
+  'plan.verify': 'बुक करने के लिए अपना मोबाइल नंबर वेरिफ़ाई करें', 'plan.bookBtn': '{what} बुक करें · {fee}', 'plan.booking': 'बुक हो रहा है…',
+  'plan.notLive': 'हम अभी {city} में उपलब्ध नहीं हैं', 'plan.waitDesc': 'ऊपर का अनुमान असली है। हम {city} में वेरिफ़ाइड टीमें जोड़ रहे हैं — अपना नंबर दीजिए, जिस दिन हम यह प्रोजेक्ट कर पाएँगे, आपको संदेश मिलेगा।',
+  'plan.join': '{city} वेटलिस्ट में जुड़ें', 'plan.joined': 'आप {city} वेटलिस्ट में हैं। हम आपसे संपर्क करेंगे।',
+  'plan.roomsCount': '{total} में से {n} चुने गए',
+  'plan.notesPh': 'जैसे: 30 साल पुराना घर, ग्राउंड फ़्लोर, पश्चिम की तरफ़ आँगन', 'plan.valuePh': 'जैसे: ₹1 करोड़ के लिए 100',
+  'plan.drainQ': 'नए बाथरूम से नज़दीकी नाली / सेप्टिक तक की दूरी (फ़ुट)', 'plan.drainHint': 'पक्का नहीं पता? 0 लिखें — एक्सपर्ट विज़िट के दौरान नाप लेगा।',
+  'plan.visitDesc.design': 'वेरिफ़ाइड इंटीरियर डिज़ाइनर आपके घर आकर समझता है कि आप कैसे रहते हैं, फिर आपका डिज़ाइन और कोटेशन तैयार करता है।',
+  'plan.visitDesc.site': 'वेरिफ़ाइड एक्सपर्ट आपकी प्रॉपर्टी पर आकर नाप लेता है और तय कीमत का कोटेशन देता है।',
+  'plan.notPresent': 'आपका मौजूद रहना ज़रूरी नहीं — कोई ऐसा संपर्क दीजिए जो दरवाज़ा खोल सके।',
+  'plan.feeNote': 'आगे बढ़ने पर यह फ़ीस आपके प्रोजेक्ट में समायोजित हो जाती है। (इस वर्ज़न में पेमेंट गेटवे जुड़ा नहीं है।)',
+  'tier.economy': 'इकोनॉमी', 'tier.economy.d': 'सामान्य फ़िटिंग, काम चलाऊ फ़िनिश', 'tier.standard': 'स्टैंडर्ड', 'tier.standard.d': 'ब्रांडेड फ़िटिंग, अच्छी फ़िनिश', 'tier.premium': 'प्रीमियम', 'tier.premium.d': 'प्रीमियम ब्रांड, डिज़ाइनर फ़िनिश',
+  'visit.site': 'साइट विज़िट', 'visit.design': 'डिज़ाइन कंसल्टेशन', 'visit.plot': 'प्लॉट विज़िट',
+};
+
+export function translate(lang: Lang, key: Key, vars?: Record<string, string | number>): string {
+  const raw = (lang === 'hi' ? hi[key] : en[key]) ?? en[key];
+  return vars ? raw.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`)) : raw;
+}

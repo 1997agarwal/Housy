@@ -2,7 +2,8 @@
 
 import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getType, inr } from '@/lib/catalog';
+import { getType, inr, phaseName } from '@/lib/catalog';
+import { useT } from '@/lib/i18n';
 import { visitSlots } from '@/lib/slots';
 import { cityOrDefault } from '@/lib/cities';
 import type { Milestone, Project } from '@/lib/projects';
@@ -30,6 +31,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [busy, setBusy] = useState(false);
   const [missing, setMissing] = useState(false);
   const { user } = useAuth();
+  const { lang } = useT();
   const [mArea, setMArea] = useState('');
   const [mDrain, setMDrain] = useState('');
   const [mNote, setMNote] = useState('');
@@ -170,7 +172,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     <li key={m.id} className="rounded-xl border border-slate-200 p-4">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <p className="font-bold">{i + 1}. {m.name}</p>
+                          <p className="font-bold">{i + 1}. {phaseName(p.typeId, m.phaseId, m.name, lang === 'hi')}</p>
                           <p className="text-sm text-slate-600">{m.pro.name} · {m.pro.role} · ⭐ {m.pro.rating} · crew of {m.pro.crew} · ~{m.days} days</p>
                         </div>
                         <div className="text-right">
