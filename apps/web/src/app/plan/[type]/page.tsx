@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { visitSlots } from '@/lib/slots';
 import { cityName, typeArea, typeTagline, typeTitle, useT } from '@/lib/i18n';
 import { LoginForm } from '@/lib/LoginForm';
+import { loc, materialsFor } from '@/lib/materials';
 import { finishLabel, optionLabel, roomName, stateName, styleName } from '@/lib/catalog-hi';
 import { STYLES, TIERS, estimate, getType, phaseName, inr, inrShort, interiorBudgetGuide, type Tier } from '@/lib/catalog';
 
@@ -263,6 +264,21 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
             </ul>
           </div>
           {est.flags.map((f, i) => <div key={i} className={`rounded-xl border p-3 text-sm ${FLAG[f.level]}`}>{lang === 'hi' ? (f.textHi ?? te(f.text)) : f.text}</div>)}
+          {materialsFor(typeId).length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="font-extrabold text-slate-900">🧱 {t('mat.title')}</h2>
+              <p className="text-xs text-slate-500">{t('mat.sub', { tier: t(`tier.${tier}` as const) })}</p>
+              <ul className="mt-3 space-y-3 text-sm">
+                {materialsFor(typeId).map((m) => (
+                  <li key={m.id}>
+                    <p className="font-bold text-slate-900">{loc(m.name, lang)}</p>
+                    <p className="text-slate-700">{loc(m.pick[tier], lang)}</p>
+                    <p className="text-xs text-amber-800">⚠ {t('mat.watch')} {loc(m.tip, lang)}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </aside>
       </div>
     </div>

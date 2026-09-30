@@ -69,6 +69,7 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | **Matchmaking**: ranks seed + approved crews by rating (blended with real reviews), track record, experience and rate fit; new partners get a fair baseline + boost; near-equals are picked by **least open work** | ✅ | Pure ranking + load sharing, unit-tested (`matching.ts`). Never crosses cities |
 | **Job offers**: partner-crews receive a pending offer per milestone, accept or decline in their portal; decline re-offers to the next best match and is logged on the timeline; owner can't start a milestone that is still pending | ✅ | Crews see city/area/amount and only the customer's first name after accepting. Seed crews are assigned outright |
 | Ops approvals queue in `/admin` (approve / suspend with note) | ✅ | English-only ops console; phones masked |
+| **Materials guide** on every plan page: per project type, what to ask for at the chosen quality tier (specs and IS/ISI standards, not prices or brands) plus one "watch out" tip each | ✅ | Static content in `lib/materials.ts`, Hindi + English, completeness-tested. Product/artifact recommendations for interiors and designer-specific advice are not built |
 | Seed crews (16 in Bareilly & Lucknow) | 🟡 | Fake names. They still exist alongside registered partners; remove once real crews are onboarded |
 | Tests, strict typecheck, ESLint, CI (GitHub Actions) | ✅ | |
 | Error / not-found pages | ✅ | |

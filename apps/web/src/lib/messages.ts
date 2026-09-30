@@ -465,6 +465,9 @@ export const en = {
   'pt.new': 'New',
   'pt.waitingAccept': 'Waiting for {name} to accept',
   'wk.statsNew': '🆕 New on Housy · {yrs} yrs · crew of {crew}',
+  'mat.title': 'Materials to ask for',
+  'mat.sub': 'What to look for at the {tier} level. Check it on the packaging or the bill.',
+  'mat.watch': 'Watch out:',
 } as const;
 export type Key = keyof typeof en;
 
@@ -931,6 +934,9 @@ export const hi: Record<Key, string> = {
   'pt.new': 'नया',
   'pt.waitingAccept': '{name} के स्वीकार करने का इंतज़ार',
   'wk.statsNew': '🆕 Housy पर नए · {yrs} साल · टीम में {crew}',
+  'mat.title': 'किन सामानों की माँग करें',
+  'mat.sub': '{tier} स्तर पर क्या देखना है। पैकेट या बिल पर जाँचें।',
+  'mat.watch': 'ध्यान रखें:',
 };
 
 export function translate(lang: Lang, key: Key, vars?: Record<string, string | number>): string {
