@@ -10,6 +10,8 @@ export class AuthError extends Error { constructor(msg: string, public status = 
 const COOKIE = 'housy_session';
 const SESSION_DAYS = 30;
 const OTP_TTL_MS = 5 * 60_000, RESEND_MS = 30_000, MAX_ATTEMPTS = 5;
+// Hourly caps on OTP requests. They stop the endpoint being used to text-bomb numbers or burn SMS budget.
+const HOUR = 3_600_000, MAX_PER_IP_HOUR = 10, MAX_PER_PHONE_HOUR = 5;
 
 function secret(): string {
   const s = process.env.HOUSY_SESSION_SECRET;
@@ -49,9 +51,25 @@ interface OtpRec { hash: string; exp: number; attempts: number; sentAt: number }
 type OtpStore = Record<string, OtpRec>;
 const hashCode = (phone: string, code: string) => createHash('sha256').update(`${secret()}|${phone}|${code}`).digest('hex');
 
-export async function requestOtp(rawPhone: unknown): Promise<Delivery> {
+// Sliding-window limiter. Returns seconds to wait if any key is over its limit; otherwise records the hit and returns 0.
+async function rateLimit(checks: [key: string, limit: number][], windowMs: number): Promise<number> {
+  return withJson<Record<string, number[]>, number>('ratelimit', () => ({}), (store) => {
+    const now = Date.now();
+    for (const k of Object.keys(store)) { store[k] = store[k].filter((t) => now - t < windowMs); if (!store[k].length) delete store[k]; }
+    for (const [key, limit] of checks) {
+      const hits = store[key] ?? [];
+      if (hits.length >= limit) return Math.ceil((hits[0] + windowMs - now) / 1000);
+    }
+    for (const [key] of checks) (store[key] ??= []).push(now);
+    return 0;
+  });
+}
+
+export async function requestOtp(rawPhone: unknown, ip = 'unknown'): Promise<Delivery> {
   const phone = normalizePhone(rawPhone);
   if (!phone) throw new AuthError('Enter a valid 10-digit Indian mobile number');
+  const wait0 = await rateLimit([[`ip:${ip}`, MAX_PER_IP_HOUR], [`phone:${phone}`, MAX_PER_PHONE_HOUR]], HOUR);
+  if (wait0) throw new AuthError(`Too many code requests. Try again in ${Math.ceil(wait0 / 60)} min`, 429);
   const code = String(randomInt(100000, 1000000));
   const r = await withJson<OtpStore, { wait?: number }>('otp', () => ({}), (store) => {
     const now = Date.now();

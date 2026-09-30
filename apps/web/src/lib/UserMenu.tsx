@@ -11,6 +11,7 @@ export function UserMenu() {
   if (!user) return <Link href="/login" className="rounded-lg bg-[#E05A2B] px-3 py-1.5 text-white hover:bg-[#C44519] whitespace-nowrap">Log in / Sign up</Link>;
   return (
     <span className="flex items-center gap-3">
+      {user.isAdmin && <Link href="/admin" className="text-slate-700 hover:text-slate-900">Ops</Link>}
       <Link href={user.onboarded ? '/profile' : '/welcome'} className="hidden sm:inline text-slate-700 hover:text-slate-900" title="Your profile">
         {user.onboarded ? user.name.split(' ')[0] : 'Finish sign-up'}
       </Link>

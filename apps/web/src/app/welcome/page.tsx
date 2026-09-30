@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useCity } from '@/lib/city-context';
 import { LoginForm } from '@/lib/LoginForm';
 import { ProfileForm } from '@/lib/ProfileForm';
-import { PROJECT_TYPES, CATEGORIES, estimate, inrShort, interiorBudgetGuide, type Category } from '@/lib/catalog';
+import { PROJECT_TYPES, estimate, inrShort, interiorBudgetGuide, type Category } from '@/lib/catalog';
 import { cityOrDefault } from '@/lib/cities';
 import type { Profile } from '@/lib/profile-shared';
 
