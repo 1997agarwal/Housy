@@ -24,6 +24,7 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | Build (new house) · Renovate (bathroom, kitchen, wall, rewiring, waterproofing, painting, full-home) · Interiors (full-home, single room) | ✅ | 10 project types |
 | Instant phase-wise estimate: labor/material split, 15 % contingency, range, timeline, quality tiers, safety flags | ✅ | |
 | Interiors: design style + "8–12 % of property value" budget guide | ✅ | |
+| Interiors: room-by-room scope (9 rooms) with live price per room; finish grades (shutters, lighting) | ✅ | Unselected rooms drop out of the price; scope survives on-site re-measurement |
 | **Rates, city multipliers, timelines** | 🟡 | **Placeholders** (Bareilly baseline). Need real quotes to calibrate |
 | Structural work always includes engineer/architect phase | ✅ | |
 
@@ -34,6 +35,7 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | Accept quote → 20 % advance → milestones per phase, crews assigned from the project's own city | ✅ | Payments **simulated** |
 | Milestones in strict order: start → submit → approve → paid; money always sums to the quote | ✅ | |
 | **Photo proof required to submit a milestone**, crew note, owner reviews before paying | ✅ | Images resized in browser, validated by magic bytes, private, 2 MB, 6 per milestone; stored on local disk |
+| Design/work review loop: owner can **request changes** (max 3 rounds); fix needs a *fresh* photo; design must be approved before execution phases unlock | ✅ | Designer renders carry captions |
 | Ownership isolation (other users get 404) | ✅ | |
 | Crew directory per city, filter by trade | ✅ | |
 | Crew/expert real apps (today: "Demo control" buttons on the owner's page) | 🟡 | The biggest simulation left |
@@ -49,12 +51,12 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 
 ## 6. Not started (from the PRD)
 AI advisor in the web app (bathroom/wall feasibility, freeform chat — exists only in legacy backend) · floor-plan wizard/scan (legacy mobile) ·
-in-app chat · reviews & ratings · expense/photo journal beyond milestones · design deliverables for interiors (3D upload/approval, room scope, finishes) ·
+in-app chat · reviews & ratings · expense/photo journal beyond milestones · 
 supervisor-as-a-service · equipment & material marketplace · education content · field-agent app & Housy ID cards · issue/dispute flow · NRI-specific features.
 
 ## Suggested next order
-1. Interiors depth (design deliverable upload + approval gate, room scope, finishes) — the differentiator.
-2. Supabase storage (needs project + keys) → deployable.
-3. Reviews & ratings after completion; issue/dispute flow.
-4. AI advisor (port from legacy backend) feeding intake & quote findings.
-5. Real expert/crew app, payments, notifications (need keys/accounts).
+1. ~~Interiors depth~~ — done.
+2. Reviews & ratings after completion; issue/dispute flow.
+3. Rule-based feasibility advisor (wall safety G/A/R, bathroom feasibility) in the plan flow — works without AI keys.
+4. AI advisor (port from legacy backend, needs Gemini key) feeding intake & quote findings.
+5. Supabase storage (deferred by choice), real expert/crew app, payments, notifications (need keys/accounts).

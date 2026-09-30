@@ -23,6 +23,8 @@ export const TIERS: Record<Tier, { label: string; mult: number; blurb: string }>
 
 type Basis = 'area' | 'fixed' | 'drain';
 interface Item { label: string; kind: 'labor' | 'material'; basis: Basis; rate: number }
+export interface RoomDef { id: string; name: string; weight: number }   // weight = share of a whole-home job (weights sum to 1)
+export interface FinishDef { id: string; label: string; phaseId: string; options: { id: string; label: string; mult: number }[] } // mult applies to that phase's materials
 interface PhaseDef { id: string; name: string; trade: Trade; baseDays: number; daysPerSqft?: number; items: Item[] }
 
 export interface ProjectType {
@@ -32,6 +34,8 @@ export interface ProjectType {
   visitLabel: string;        // "Site visit" | "Design consultation" …
   featured?: boolean;        // shown first on the post-sign-up welcome screen
   interiors?: boolean;       // asks for a style, shows the property-value budget guide
+  rooms?: RoomDef[];         // room-by-room scope (interiors): unselected rooms drop out of the price
+  finishes?: FinishDef[];    // finish grades that change one phase's material cost
   staticFlags?: { level: 'green' | 'amber' | 'red'; text: string }[];
   title: string;
   tagline: string;
@@ -202,6 +206,19 @@ export const PROJECT_TYPES: ProjectType[] = [
     id: 'interiors-full', featured: true, category: 'interiors', visitLabel: 'Design consultation', expert: 'designer', interiors: true, title: 'Full-home interiors', emoji: '🛋️',
     tagline: 'A designer plans your whole home in 3D, you approve every look, then verified crews build it.',
     areaLabel: 'Carpet area (sq ft)', defaultArea: 1000, visitFee: 999,
+    rooms: [
+      { id: 'living', name: 'Living room', weight: 0.22 }, { id: 'kitchen', name: 'Modular kitchen', weight: 0.18 },
+      { id: 'master', name: 'Master bedroom', weight: 0.18 }, { id: 'bedroom2', name: 'Bedroom 2', weight: 0.12 },
+      { id: 'kids', name: 'Kids’ room', weight: 0.10 }, { id: 'dining', name: 'Dining', weight: 0.08 },
+      { id: 'study', name: 'Study / home office', weight: 0.06 }, { id: 'pooja', name: 'Pooja unit', weight: 0.03 },
+      { id: 'balcony', name: 'Balcony', weight: 0.03 },
+    ],
+    finishes: [
+      { id: 'shutter', label: 'Cabinet & wardrobe shutters', phaseId: 'carpentry', options: [
+        { id: 'laminate', label: 'Laminate (durable, most popular)', mult: 1 }, { id: 'acrylic', label: 'Acrylic (glossy, modern)', mult: 1.18 }, { id: 'pu', label: 'PU / veneer (premium)', mult: 1.4 }] },
+      { id: 'lighting', label: 'Lighting', phaseId: 'electrical', options: [
+        { id: 'standard', label: 'Standard (panel + downlights)', mult: 1 }, { id: 'designer', label: 'Designer (cove, profile & accent)', mult: 1.35 }] },
+    ],
     staticFlags: [{ level: 'green', text: 'Design is approved by you in 3D before any work or material order starts.' }],
     phases: [
       { id: 'design', name: 'Design: space planning, 3D & working drawings', trade: 'designer', baseDays: 14, items: [
@@ -256,7 +273,7 @@ PROJECT_TYPES.sort((a, b) => ORDER.indexOf(a.category) - ORDER.indexOf(b.categor
 
 export const getType = (id: string) => PROJECT_TYPES.find((t) => t.id === id);
 
-export interface EstimateInput { typeId: string; city: string; area: number; tier: Tier; drainFt?: number }
+export interface EstimateInput { typeId: string; city: string; area: number; tier: Tier; drainFt?: number; rooms?: string[]; finishes?: Record<string, string> }
 export interface EstimatePhase {
   id: string; name: string; trade: Trade; days: number;
   labor: number; material: number; subtotal: number;
@@ -265,6 +282,7 @@ export interface Estimate {
   phases: EstimatePhase[];
   labor: number; material: number; contingency: number; total: number;
   low: number; high: number; days: number;
+  rooms?: { id: string; name: string; cost: number }[];   // approximate price per selected room (includes contingency)
   flags: { level: 'green' | 'amber' | 'red'; text: string }[];
 }
 
@@ -276,15 +294,22 @@ export function estimate(input: EstimateInput): Estimate {
   if (!type) throw new Error(`Unknown project type: ${input.typeId}`);
   const cityMult = getCity(input.city)?.mult ?? 1;
   const tierMult = TIERS[input.tier].mult;
-  const area = Math.max(1, input.area);
   const drain = Math.max(0, input.drainFt ?? 0);
+  // Room scope: only the selected rooms are priced. Area-based items scale by the selected share of the whole-home job.
+  const allRooms = type.rooms ?? [];
+  const picked = allRooms.length ? (input.rooms?.length ? allRooms.filter((r) => input.rooms!.includes(r.id)) : allRooms) : [];
+  const share = allRooms.length ? picked.reduce((a, r) => a + r.weight, 0) / allRooms.reduce((a, r) => a + r.weight, 0) : 1;
+  const area = Math.max(1, input.area) * share;
+  const finishMult = (phaseId: string) => (type.finishes ?? [])
+    .filter((f) => f.phaseId === phaseId)
+    .reduce((m, f) => m * (f.options.find((o) => o.id === input.finishes?.[f.id])?.mult ?? 1), 1);
 
   const phases: EstimatePhase[] = type.phases.map((p) => {
     let labor = 0, material = 0;
     for (const it of p.items) {
       const qty = it.basis === 'area' ? area : it.basis === 'drain' ? drain : 1;
       // Labor scales with city only; materials scale with quality tier too.
-      const v = qty * it.rate * cityMult * (it.kind === 'material' ? tierMult : 1);
+      const v = qty * it.rate * cityMult * (it.kind === 'material' ? tierMult * finishMult(p.id) : 1);
       if (it.kind === 'labor') labor += v; else material += v;
     }
     return {
@@ -309,8 +334,10 @@ export function estimate(input: EstimateInput): Estimate {
   if (type.staticFlags) flags.push(...type.staticFlags);
   if (input.tier === 'premium') flags.push({ level: 'green', text: 'Premium tier: material lead-times can add 3–7 days.' });
 
+  const pickedWeight = picked.reduce((a, r) => a + r.weight, 0);
   return {
     phases, labor, material, contingency, total,
+    rooms: picked.length ? picked.map((r) => ({ id: r.id, name: r.name, cost: round50((total * r.weight) / pickedWeight) })) : undefined,
     low: round50(total * 0.9), high: round50(total * 1.12),
     days: phases.reduce((a, p) => a + p.days, 0), flags,
   };

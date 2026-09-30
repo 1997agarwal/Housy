@@ -9,7 +9,7 @@ import type { Milestone, Project } from '@/lib/projects';
 import { useAuth } from '@/lib/auth-context';
 import { LoginForm } from '@/lib/LoginForm';
 import { PhotoStrip, PhotoUploader } from '@/lib/MilestonePhotos';
-import { MAX_PHOTOS_PER_MILESTONE } from '@/lib/limits';
+import { MAX_PHOTOS_PER_MILESTONE, MAX_REVISIONS } from '@/lib/limits';
 
 const STAGE_IDX = { visit_scheduled: 0, quote_ready: 1, active: 2, completed: 3, cancelled: -1 } as const;
 const btn = 'rounded-xl bg-[#E05A2B] px-4 py-2 text-sm font-bold text-white hover:bg-[#C44519] disabled:opacity-60';
@@ -31,6 +31,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [mNote, setMNote] = useState('');
   const [newSlot, setNewSlot] = useState('');
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [changing, setChanging] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -65,6 +67,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const STAGES = [type.interiors ? 'Design' : 'Visit', 'Quote', type.category === 'build' ? 'Build' : 'Work', 'Done'];
   const stage = STAGE_IDX[p.status];
   const cancelled = p.status === 'cancelled';
+  const isDesign = (m: Milestone) => !!type.interiors && m.phaseId === 'design';
   const cancel = () => { if (window.confirm('Cancel this project? This cannot be undone.')) send({ action: 'cancel' }); };
   const total = p.quote?.total ?? p.estimate.total;
   const pct = Math.min(100, Math.round((p.paid / total) * 100));
@@ -87,6 +90,15 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-6">
+          {(p.rooms || p.finishes) && type.rooms && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="font-extrabold">Design scope</h2>
+              <p className="mt-2 text-sm text-slate-700"><b>Rooms:</b> {(p.estimate.rooms ?? []).map((r) => r.name).join(', ')}</p>
+              {type.finishes?.map((f) => <p key={f.id} className="text-sm text-slate-700"><b>{f.label}:</b> {f.options.find((o) => o.id === (p.finishes?.[f.id] ?? f.options[0].id))?.label}</p>)}
+              {p.style && <p className="text-sm text-slate-700"><b>Style:</b> {p.style}</p>}
+            </section>
+          )}
+
           {p.status === 'visit_scheduled' && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="font-extrabold">{type.visitLabel} booked</h2>
@@ -157,22 +169,38 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                       {m.status === 'upcoming' && prevDone && p.status === 'active' && (
                         <button className={`${btn} mt-3`} disabled={busy} onClick={() => send({ action: 'start', milestoneId: m.id })}>Simulate: crew starts</button>
                       )}
-                      {(p.photos ?? []).some((ph) => ph.milestoneId === m.id) && <PhotoStrip projectId={p.id} photos={(p.photos ?? []).filter((ph) => ph.milestoneId === m.id)} />}
+                      {(p.photos ?? []).some((ph) => ph.milestoneId === m.id) && <PhotoStrip projectId={p.id} kind={isDesign(m) ? 'design' : 'site'} photos={(p.photos ?? []).filter((ph) => ph.milestoneId === m.id)} />}
                       {m.crewNote && <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700"><b>{m.pro.name}:</b> {m.crewNote}</p>}
+                      {m.feedback && m.status === 'in_progress' && <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900"><b>Your change request (round {m.revisions}/{MAX_REVISIONS}):</b> {m.feedback}</p>}
                       {m.status === 'in_progress' && (() => {
                         const n = (p.photos ?? []).filter((ph) => ph.milestoneId === m.id).length;
+                        const fresh = (p.photos ?? []).filter((ph) => ph.milestoneId === m.id && (!m.feedbackAt || ph.at > m.feedbackAt)).length;
                         return (
                           <div className="mt-3 rounded-xl border border-dashed border-slate-300 p-3">
                             <p className="text-xs font-bold uppercase text-slate-500">Demo control · crew app</p>
-                            <p className="text-sm text-slate-600">The crew must attach at least one site photo before submitting.</p>
-                            <PhotoUploader projectId={p.id} milestoneId={m.id} count={n} max={MAX_PHOTOS_PER_MILESTONE} onAdded={reload} />
+                            <p className="text-sm text-slate-600">{isDesign(m) ? 'The designer must upload the design renders (with captions) before submitting.' : 'The crew must attach at least one site photo before submitting.'}{m.feedbackAt ? ' After a change request, a new photo is required.' : ''}</p>
+                            <PhotoUploader projectId={p.id} milestoneId={m.id} count={n} max={MAX_PHOTOS_PER_MILESTONE} onAdded={reload} kind={isDesign(m) ? 'design' : 'site'} />
                             <input className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" placeholder="Crew note (optional) — e.g. slope checked 1:40, pipes pressure-tested" value={notes[m.id] ?? ''} onChange={(e) => setNotes((x) => ({ ...x, [m.id]: e.target.value }))} />
-                            <button className={`${btn} mt-2`} disabled={busy || n === 0} onClick={() => send({ action: 'submit', milestoneId: m.id, note: notes[m.id] })}>Submit work for review</button>
+                            <button className={`${btn} mt-2`} disabled={busy || fresh === 0} onClick={() => send({ action: 'submit', milestoneId: m.id, note: notes[m.id] })}>{isDesign(m) ? 'Submit designs for approval' : 'Submit work for review'}</button>
                           </div>
                         );
                       })()}
                       {m.status === 'in_review' && (
-                        <button className={`${btn} mt-3`} disabled={busy} onClick={() => send({ action: 'approve', milestoneId: m.id })}>Approve work & release {inr(m.amount)}</button>
+                        <div className="mt-3">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <button className={btn} disabled={busy} onClick={() => send({ action: 'approve', milestoneId: m.id })}>{isDesign(m) ? 'Approve design & release' : 'Approve work & release'} {inr(m.amount)}</button>
+                            {(m.revisions ?? 0) < MAX_REVISIONS
+                              ? <button className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 hover:border-slate-400" disabled={busy} onClick={() => { setChanging(changing === m.id ? null : m.id); setFeedback(''); }}>Request changes</button>
+                              : <span className="text-xs text-slate-500">Change requests used up — contact Housy support if unhappy.</span>}
+                          </div>
+                          {changing === m.id && (
+                            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                              <label className="block text-sm font-semibold text-slate-700" htmlFor={`fb-${m.id}`}>What should change? <span className="font-normal text-slate-500">(round {(m.revisions ?? 0) + 1} of {MAX_REVISIONS})</span></label>
+                              <textarea id={`fb-${m.id}`} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder={isDesign(m) ? 'e.g. Prefer a warmer palette in the living room; add a TV unit' : 'e.g. Tile joints in the corner are uneven'} />
+                              <button className={`${btn} mt-2`} disabled={busy || feedback.trim().length < 5} onClick={async () => { await send({ action: 'request_changes', milestoneId: m.id, feedback }); setChanging(null); }}>Send to crew</button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </li>
                   );

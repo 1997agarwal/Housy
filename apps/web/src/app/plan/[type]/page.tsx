@@ -29,6 +29,8 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
   const [drain, setDrain] = useState<number | ''>(type.askDrain ? 15 : '');
   const [notes, setNotes] = useState('');
   const [style, setStyle] = useState<string>('');
+  const [rooms, setRooms] = useState<string[]>(() => type.rooms?.map((r) => r.id) ?? []);
+  const [finishes, setFinishes] = useState<Record<string, string>>({});
   const [valueLakh, setValueLakh] = useState<number | ''>('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -43,8 +45,8 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
     } }, [user]);
 
   const est = useMemo(
-    () => estimate({ typeId, city: city.id, area: Number(area) || 0, tier, drainFt: drain === '' ? undefined : Number(drain) }),
-    [typeId, city.id, area, tier, drain],
+    () => estimate({ typeId, city: city.id, area: Number(area) || 0, tier, drainFt: drain === '' ? undefined : Number(drain), rooms: type.rooms ? rooms : undefined, finishes }),
+    [typeId, city.id, area, tier, drain, rooms, finishes, type.rooms],
   );
 
   async function book() {
@@ -53,7 +55,7 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
     try {
       const res = await fetch('/api/projects', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ typeId, city: city.id, area: Number(area), tier, drainFt: drain === '' ? undefined : Number(drain), notes, style: style || undefined, propertyValueLakh: valueLakh === '' ? undefined : valueLakh, name, phone, slot }),
+        body: JSON.stringify({ typeId, city: city.id, area: Number(area), tier, drainFt: drain === '' ? undefined : Number(drain), notes, style: style || undefined, rooms: type.rooms ? rooms : undefined, finishes: type.finishes ? finishes : undefined, propertyValueLakh: valueLakh === '' ? undefined : valueLakh, name, phone, slot }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not book');
@@ -119,6 +121,34 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
                 </div>
               </>
             )}
+            {type.rooms && (
+              <div>
+                <span className={label}>Rooms to design <span className="font-normal text-slate-500">({rooms.length} of {type.rooms.length} selected)</span></span>
+                <div className="mt-1 grid gap-2 sm:grid-cols-3">
+                  {type.rooms.map((r) => {
+                    const on = rooms.includes(r.id);
+                    const cost = est.rooms?.find((x) => x.id === r.id)?.cost;
+                    return (
+                      <button key={r.id} type="button" aria-pressed={on}
+                        onClick={() => setRooms((cur) => (on ? (cur.length > 1 ? cur.filter((x) => x !== r.id) : cur) : [...cur, r.id]))}
+                        className={`rounded-xl border p-3 text-left text-sm ${on ? 'border-[#E05A2B] bg-orange-50' : 'border-slate-300 bg-white text-slate-500 hover:border-slate-400'}`}>
+                        <div className="font-bold">{on ? '✓ ' : ''}{r.name}</div>
+                        <div className="text-xs">{on && cost ? `~${inrShort(cost)}` : 'Not included'}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">Deselect rooms you don’t want designed now — the price updates instantly.</p>
+              </div>
+            )}
+            {type.finishes?.map((f) => (
+              <div key={f.id}>
+                <label className={label} htmlFor={`fin-${f.id}`}>{f.label}</label>
+                <select id={`fin-${f.id}`} className={field} value={finishes[f.id] ?? f.options[0].id} onChange={(e) => setFinishes((x) => ({ ...x, [f.id]: e.target.value }))}>
+                  {f.options.map((o) => <option key={o.id} value={o.id}>{o.label}{o.mult > 1 ? ` · +${Math.round((o.mult - 1) * 100)}% on materials` : ''}</option>)}
+                </select>
+              </div>
+            ))}
             <div>
               <span className={label}>Quality</span>
               <div className="mt-1 grid gap-2 sm:grid-cols-3">
@@ -204,6 +234,7 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
               <div className="bg-slate-400 flex-1" />
             </div>
             <div className="mt-1 flex justify-between text-xs text-slate-600"><span>Labor {inr(est.labor)}</span><span>Material {inr(est.material)}</span></div>
+            {est.rooms && <p className="mt-4 text-xs font-bold uppercase tracking-wider text-slate-500">By phase</p>}
             <ul className="mt-4 divide-y divide-slate-100 text-sm">
               {est.phases.map((p, i) => (
                 <li key={p.id} className="flex justify-between gap-3 py-2">

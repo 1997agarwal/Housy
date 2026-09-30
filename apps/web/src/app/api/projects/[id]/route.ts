@@ -5,7 +5,7 @@ import { act, getProject, NotFoundError, type Action } from '@/lib/projects';
 
 export const dynamic = 'force-dynamic';
 type Ctx = { params: Promise<{ id: string }> };
-const ACTIONS = ['complete_visit', 'accept_quote', 'start', 'submit', 'approve', 'reschedule', 'cancel'];
+const ACTIONS = ['complete_visit', 'accept_quote', 'start', 'submit', 'approve', 'reschedule', 'cancel', 'request_changes'];
 
 export async function GET(_: Request, { params }: Ctx) {
   try {
