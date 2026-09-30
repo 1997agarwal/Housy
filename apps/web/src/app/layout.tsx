@@ -1,44 +1,30 @@
 import type { Metadata, Viewport } from 'next';
+import Link from 'next/link';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Housy — Renovation Intelligence & Verified Labor',
-  description: 'AI-guided ancestral house renovation and verified mistri booking platform.',
-  icons: {
-    icon: '/favicon.ico',
-  },
+  title: 'Housy — Renovate your home without being there',
+  description: 'Book a verified expert to assess your home, get a fixed quote, and track every milestone — for renovations, not just repairs.',
 };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: '#FAF9F6',
-};
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-[#ECEAE4] text-slate-800 antialiased min-h-screen flex items-center justify-center p-0 sm:py-6">
-        {/* Mobile Viewport Container */}
-        <div className="w-full sm:max-w-[460px] h-[100dvh] sm:h-[900px] sm:max-h-[92vh] bg-[#FAF9F6] sm:rounded-[36px] sm:shadow-[0_20px_60px_rgba(0,0,0,0.18)] sm:border-[8px] sm:border-slate-800 flex flex-col overflow-hidden relative">
-          {/* Subtle Mobile Speaker Notch on desktop */}
-          <div className="hidden sm:flex justify-center pt-2 pb-1 bg-[#FAF9F6] shrink-0 z-50">
-            <div className="w-20 h-4 bg-slate-800 rounded-full flex items-center justify-center">
-              <div className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-700 ml-auto mr-2" />
-            </div>
+      <body className="min-h-screen bg-[#FAF9F6] text-slate-800 antialiased flex flex-col">
+        <header className="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+          <div className="mx-auto max-w-5xl px-4 h-14 flex items-center justify-between">
+            <Link href="/" className="text-2xl font-black tracking-tight text-[#E05A2B]">Housy</Link>
+            <nav className="flex items-center gap-5 text-sm font-semibold text-slate-600">
+              <Link href="/#services" className="hover:text-slate-900">Services</Link>
+              <Link href="/projects" className="hover:text-slate-900">My projects</Link>
+            </nav>
           </div>
-
-          {/* Main App Content Area */}
-          <main className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col no-scrollbar">
-            {children}
-          </main>
-        </div>
+        </header>
+        <main className="flex-1">{children}</main>
+        <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500">
+          Housy — whole-project renovation, run for you. AI guidance is not a substitute for a licensed structural engineer.
+        </footer>
       </body>
     </html>
   );
