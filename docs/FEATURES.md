@@ -41,6 +41,7 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | Milestones in strict order: start → submit → approve → paid; money always sums to the quote | ✅ | |
 | **Photo proof required to submit a milestone**, crew note, owner reviews before paying | ✅ | Images resized in browser, validated by magic bytes, private, 2 MB, 6 per milestone; stored on local disk |
 | Design/work review loop: owner can **request changes** (max 3 rounds); fix needs a *fresh* photo; design must be approved before execution phases unlock | ✅ | Designer renders carry captions |
+| **Problems & support**: owner reports quality / stoppage / material / design / payment issues (optionally tied to a step), threads with Housy, marks resolved or reopens; unresolved > 48 h auto-escalate; ops queue in `/admin` (reply/resolve) | ✅ | Max 5 open per project. No push notification when Housy replies (owner must open the page) |
 | Ownership isolation (other users get 404) | ✅ | |
 | Crew directory per city, filter by trade, real ratings + recent reviews | ✅ | |
 | **Verified reviews**: owner of a *completed* project rates each person who worked on it (4 criteria, 1–5, optional text), once each; reviewer shown masked ("Asha K."); real ratings blend into the seed baseline | ✅ | Crew *assignment* still ranks on the seed rating, not live reviews |
@@ -58,11 +59,11 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 ## 6. Not started (from the PRD)
 Freeform AI chat (legacy backend only) · floor-plan wizard/scan (legacy mobile) ·
 in-app chat · expense/photo journal beyond milestones · 
-supervisor-as-a-service · equipment & material marketplace · education content · field-agent app & Housy ID cards · issue/dispute flow · NRI-specific features.
+supervisor-as-a-service · equipment & material marketplace · education content · field-agent app & Housy ID cards ·  NRI-specific features.
 
 ## Suggested next order
 1. ~~Interiors depth~~ — done.
-2. ~~Reviews & ratings~~ — done. Issue/dispute flow next.
+2. ~~Reviews & ratings~~, ~~issue/dispute flow~~ — done.
 3. ~~Rule-based feasibility advisor~~ — done.
 4. AI advisor (port from legacy backend, needs Gemini key) feeding intake & quote findings.
 5. Supabase storage (deferred by choice), real expert/crew app, payments, notifications (need keys/accounts).

@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth-context';
 import { LoginForm } from '@/lib/LoginForm';
 import { PhotoStrip, PhotoUploader } from '@/lib/MilestonePhotos';
 import { ReviewPanel } from '@/lib/ReviewPanel';
+import { IssuePanel } from '@/lib/IssuePanel';
 import { MAX_PHOTOS_PER_MILESTONE, MAX_REVISIONS } from '@/lib/limits';
 
 const STAGE_IDX = { visit_scheduled: 0, quote_ready: 1, active: 2, completed: 3, cancelled: -1 } as const;
@@ -148,6 +149,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               {p.status === 'quote_ready' && <button className="ml-3 mt-4 text-sm font-bold text-red-700 hover:underline" disabled={busy} onClick={cancel}>Decline & cancel</button>}
             </section>
           )}
+
+          {(p.status === 'active' || p.status === 'completed') && <IssuePanel projectId={p.id} milestones={p.milestones} />}
 
           {p.status === 'completed' && <ReviewPanel projectId={p.id} />}
 
