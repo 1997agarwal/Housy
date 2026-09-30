@@ -39,11 +39,15 @@ export default function Plan({ params }: { params: Promise<{ type: string }> }) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  // Arriving from the advisor: carry over the drain distance it collected.
+  // Arriving from the advisor or the home plan: carry over the numbers they collected (validated, never trusted).
   useEffect(() => {
-    const d = Number(new URLSearchParams(window.location.search).get('drain'));
+    const q = new URLSearchParams(window.location.search);
+    const d = Number(q.get('drain')), a = Number(q.get('area'));
     if (type.askDrain && d > 0 && d <= 500) setDrain(d);
-  }, [type.askDrain]);
+    if (a >= 5 && a <= 20000) setArea(Math.round(a));                        // from the home plan
+    const ids = (q.get('rooms') ?? '').split(',').filter((id) => type.rooms?.some((r) => r.id === id));
+    if (type.rooms && ids.length > 0) setRooms([...new Set(ids)]);
+  }, [type.askDrain, type.rooms]);
 
   // Prefill the site contact from the verified account once known (never overwrite what the user typed).
   useEffect(() => { if (user) {
