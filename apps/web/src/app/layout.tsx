@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="text-2xl font-black tracking-tight text-[#E05A2B]">Housy</Link>
             <nav className="flex items-center gap-3 sm:gap-5 text-sm font-semibold text-slate-600">
               <Link href="/#services" className="hidden sm:inline hover:text-slate-900">Services</Link>
+              <Link href="/my-home" className="hover:text-slate-900">My home</Link>
               <Link href="/advisor" className="hover:text-slate-900">Advisor</Link>
               <Link href="/workers" className="hover:text-slate-900">Find crews</Link>
               <Link href="/projects" className="hover:text-slate-900">My projects</Link>

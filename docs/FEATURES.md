@@ -28,6 +28,12 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | **Rates, city multipliers, timelines** | 🟡 | **Placeholders** (Bareilly baseline). Need real quotes to calibrate |
 | Structural work always includes engineer/architect phase | ✅ | |
 
+## 3a. Home plan (`/my-home`)
+| Draw your house: templates (2/3 BHK) or add rooms; drag to move (snaps to ½ ft), arrow-key nudge, numeric edit, overlap warnings, totals | ✅ | Local draft until you sign in; then saved per user, restored on any device |
+| Drop the septic/drain point → **pipe run**, fall needed at 1:40, and the advisor's verdict for the chosen bathroom (shaft & ventilation inferred/asked) | ✅ | Run = Manhattan distance from the nearest wall + 2 ft; an estimate, the on-site visit measures the truth |
+| Hand-offs: "Plan this bathroom" (area + drain) and "Start interiors" (carpet area + matching rooms) pre-fill the projects | ✅ | URL params are validated, hostile values ignored |
+| Photo → floor plan (AI) | ⬜ | Legacy mobile only; needs a vision API key |
+
 ## 3b. Feasibility advisor (`/advisor`)
 | "Can I break this wall?" → green/amber/red with reasons, next steps, and a link into an engineer-led project | ✅ | Deterministic rules, **not AI**. Safety-first: any "not sure" answer can never be green; exterior/thick/load-bearing masonry walls are red. Tested exhaustively over all 5,832 answer combinations |
 | "Can I add a bathroom?" → drain fall at 1:40, floor, leak risk, ventilation; cost range from the estimator; carries the drain distance into the plan | ✅ | |
@@ -58,7 +64,7 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | Clean-clone install & build | ✅ | Fixed a broken lockfile this pass |
 
 ## 6. Not started (from the PRD)
-Freeform AI chat (legacy backend only) · floor-plan wizard/scan (legacy mobile) ·
+Freeform AI chat (legacy backend only) · photo-to-floor-plan AI scan (legacy mobile) ·
 in-app chat · expense/photo journal beyond milestones · 
 supervisor-as-a-service · equipment & material marketplace · education content · field-agent app & Housy ID cards ·  NRI-specific features.
 
