@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { getType, inr } from '@/lib/catalog';
 import { cityOrDefault } from '@/lib/cities';
 import type { Milestone, Project } from '@/lib/projects';
+import { useAuth } from '@/lib/auth-context';
+import { LoginForm } from '@/lib/LoginForm';
 
 const STAGES = ['Visit', 'Quote', 'Work', 'Done'] as const;
 const STAGE_IDX = { visit_scheduled: 0, quote_ready: 1, active: 2, completed: 3 } as const;
@@ -21,12 +23,14 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [missing, setMissing] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
+    if (!user) return;
     fetch(`/api/projects/${id}`).then(async (r) => {
-      if (r.status === 404) setMissing(true); else setP(await r.json());
+      if (r.status === 404) setMissing(true); else if (r.ok) setP(await r.json()); else setError('Could not load project');
     }).catch(() => setError('Could not load project'));
-  }, [id]);
+  }, [id, user]);
 
   const send = useCallback(async (body: object) => {
     setBusy(true); setError('');
@@ -38,6 +42,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }, [id]);
 
+  if (user === undefined) return <div className="mx-auto max-w-5xl px-4 py-16 text-slate-500">Loading…</div>;
+  if (!user) return (
+    <div className="mx-auto max-w-md px-4 py-12">
+      <h1 className="text-2xl font-black text-slate-900">Log in to view this project</h1>
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5"><LoginForm /></div>
+    </div>
+  );
   if (missing) return <div className="mx-auto max-w-5xl px-4 py-16 text-center"><p className="font-bold">Project not found.</p><Link href="/projects" className="text-[#E05A2B] font-bold">My projects →</Link></div>;
   if (!p) return <div className="mx-auto max-w-5xl px-4 py-16 text-slate-500">{error || 'Loading…'}</div>;
 

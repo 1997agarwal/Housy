@@ -1,25 +1,26 @@
 import { NextResponse } from 'next/server';
-import { NoCoverageError } from '@/lib/pros';
-import { act, ConflictError, getProject, ValidationError, type Action } from '@/lib/projects';
+import { requireSession } from '@/lib/auth';
+import { errorResponse } from '@/lib/http';
+import { act, getProject, NotFoundError, type Action } from '@/lib/projects';
 
 export const dynamic = 'force-dynamic';
 type Ctx = { params: Promise<{ id: string }> };
+const ACTIONS = ['complete_visit', 'accept_quote', 'start', 'submit', 'approve'];
 
 export async function GET(_: Request, { params }: Ctx) {
-  const p = await getProject((await params).id);
-  return p ? NextResponse.json(p) : NextResponse.json({ error: 'Not found' }, { status: 404 });
+  try {
+    const s = await requireSession();
+    const p = await getProject((await params).id, s.phone);
+    if (!p) throw new NotFoundError('Project not found');
+    return NextResponse.json(p);
+  } catch (e) { return errorResponse(e); }
 }
-
-const ACTIONS = ['complete_visit', 'accept_quote', 'start', 'submit', 'approve'];
 
 export async function POST(req: Request, { params }: Ctx) {
   try {
+    const s = await requireSession();
     const body = (await req.json()) as Action;
     if (!ACTIONS.includes(body?.action)) return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
-    return NextResponse.json(await act((await params).id, body));
-  } catch (e) {
-    if (e instanceof ValidationError || e instanceof SyntaxError) return NextResponse.json({ error: e.message }, { status: 400 });
-    if (e instanceof ConflictError || e instanceof NoCoverageError) return NextResponse.json({ error: e.message }, { status: 409 });
-    throw e;
-  }
+    return NextResponse.json(await act((await params).id, body, s.phone));
+  } catch (e) { return errorResponse(e); }
 }
