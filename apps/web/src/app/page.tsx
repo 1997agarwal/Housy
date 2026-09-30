@@ -15,24 +15,24 @@ export default function Home() {
         <div className="mx-auto max-w-5xl px-4 py-14 sm:py-20">
           <p className="text-sm font-bold uppercase tracking-widest text-[#E05A2B]">For homeowners who live far from their home</p>
           <h1 className="mt-3 max-w-3xl text-4xl sm:text-5xl font-black tracking-tight text-slate-900">
-            Renovate your home like you book a service — without being there.
+            Build it. Renovate it. Design it. All from one place — even from another city.
           </h1>
           <p className="mt-4 max-w-2xl text-lg text-slate-600">
-            Urban Company fixes a tap. Housy plans and delivers the whole job: a new bathroom, a kitchen, a wall removed,
-            a house rewired — with verified experts, a fixed price, and milestone payments.
+            Urban Company fixes a tap. Housy plans and delivers the whole job — a new house, a renovation, or complete interiors —
+            with verified experts, a fixed price, and milestone payments you approve.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/plan/new-bathroom" className="rounded-xl bg-[#E05A2B] px-6 py-3 font-bold text-white shadow-lg shadow-orange-500/25 hover:bg-[#C44519]">
-              Plan a new bathroom
+            <Link href="/welcome" className="rounded-xl bg-[#E05A2B] px-6 py-3 font-bold text-white shadow-lg shadow-orange-500/25 hover:bg-[#C44519]">
+              Get started
             </Link>
             <Link href="/workers" className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700 hover:border-slate-400">Find verified crews</Link>
-            <a href="#services" className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700 hover:border-slate-400">Browse all projects</a>
+            <a href="#services" className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700 hover:border-slate-400">See all projects</a>
           </div>
         </div>
       </section>
 
       <section id="services" className="mx-auto max-w-5xl px-4 py-12">
-        <h2 className="text-2xl font-extrabold text-slate-900">What are you planning?</h2>
+        <h2 className="text-2xl font-extrabold text-slate-900">One journey, three stages</h2>
         <ServiceGrid />
       </section>
 

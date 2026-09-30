@@ -8,7 +8,6 @@ import type { Milestone, Project } from '@/lib/projects';
 import { useAuth } from '@/lib/auth-context';
 import { LoginForm } from '@/lib/LoginForm';
 
-const STAGES = ['Visit', 'Quote', 'Work', 'Done'] as const;
 const STAGE_IDX = { visit_scheduled: 0, quote_ready: 1, active: 2, completed: 3 } as const;
 const btn = 'rounded-xl bg-[#E05A2B] px-4 py-2 text-sm font-bold text-white hover:bg-[#C44519] disabled:opacity-60';
 const MS_LABEL: Record<Milestone['status'], string> = { upcoming: 'Upcoming', in_progress: 'In progress', in_review: 'Awaiting your approval', paid: 'Approved & paid' };
@@ -53,13 +52,14 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   if (!p) return <div className="mx-auto max-w-5xl px-4 py-16 text-slate-500">{error || 'Loading…'}</div>;
 
   const type = getType(p.typeId)!;
+  const STAGES = [type.interiors ? 'Design' : 'Visit', 'Quote', type.category === 'build' ? 'Build' : 'Work', 'Done'];
   const stage = STAGE_IDX[p.status];
   const total = p.quote?.total ?? p.estimate.total;
   const pct = Math.min(100, Math.round((p.paid / total) * 100));
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{p.id} · {cityOrDefault(p.city).name}</p>
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{p.id} · {cityOrDefault(p.city).name}{p.style ? ` · ${p.style} style` : ''}</p>
       <h1 className="text-3xl font-black tracking-tight text-slate-900">{type.emoji} {type.title}</h1>
 
       <ol className="mt-6 grid grid-cols-4 gap-2" aria-label="Project stage">
@@ -73,12 +73,12 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         <div className="space-y-6">
           {p.status === 'visit_scheduled' && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="font-extrabold">Site visit booked</h2>
+              <h2 className="font-extrabold">{type.visitLabel} booked</h2>
               <p className="mt-1 text-slate-600">{new Date(p.visit.slot).toLocaleString('en-IN', { dateStyle: 'full', timeStyle: 'short' })}</p>
               <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm">
                 <b>{p.visit.expert.name}</b> · {p.visit.expert.role} · ⭐ {p.visit.expert.rating} ({p.visit.expert.reviews}) · Housy ID {p.visit.expert.housyId}
               </div>
-              <p className="mt-3 text-sm text-slate-600">The expert will measure the site, check for hidden issues and issue a fixed quote — usually within 24 hours of the visit.</p>
+              <p className="mt-3 text-sm text-slate-600">The expert will measure the space, check for hidden issues and issue a fixed quote — usually within 24 hours of the visit.</p>
               <div className="mt-4 rounded-xl border border-dashed border-slate-300 p-3">
                 <p className="text-xs font-bold uppercase text-slate-500">Demo control</p>
                 <p className="text-sm text-slate-600">No field app yet — simulate the expert finishing the visit.</p>

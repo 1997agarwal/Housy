@@ -1,6 +1,6 @@
 import { readJson, withJson } from './kv';
 import { normalizePhone } from './phone';
-import { estimate, getType, type Estimate, type Tier } from './catalog';
+import { estimate, getType, STYLES, type Estimate, type Tier } from './catalog';
 import { proForTrade, visitExpert, type Pro } from './pros';
 import { getCity } from './cities';
 
@@ -14,7 +14,7 @@ export interface Milestone {
 }
 export interface Project {
   id: string; owner: string; createdAt: string; status: ProjectStatus;
-  typeId: string; city: string; area: number; tier: Tier; drainFt?: number; notes?: string;
+  typeId: string; city: string; area: number; tier: Tier; drainFt?: number; notes?: string; style?: string; propertyValueLakh?: number;
   contact: { name: string; phone: string };
   estimate: Estimate;
   visit: { slot: string; fee: number; expert: Pro; done: boolean };
@@ -37,7 +37,7 @@ export async function getProject(id: string, owner: string) {
 
 // ── Commands ─────────────────────────────────────────────────────────
 export interface CreateInput {
-  typeId: string; city: string; area: number; tier: Tier; drainFt?: number; notes?: string;
+  typeId: string; city: string; area: number; tier: Tier; drainFt?: number; notes?: string; style?: string; propertyValueLakh?: number;
   name: string; phone: string; slot: string;
 }
 export class ValidationError extends Error {}
@@ -56,7 +56,14 @@ export function validateCreate(i: Partial<CreateInput>): CreateInput {
   if (!i.tier || !['economy', 'standard', 'premium'].includes(i.tier)) throw new ValidationError('Invalid quality tier');
   const area = Number(i.area);
   if (!(area >= 5 && area <= 20000)) throw new ValidationError('Area looks wrong');
-  return { ...(i as CreateInput), city: city.id, phone: sitePhone, area, drainFt: i.drainFt == null ? undefined : Math.max(0, Number(i.drainFt)) };
+  let style: string | undefined;
+  if (type.interiors) {
+    if (!i.style || !(STYLES as readonly string[]).includes(i.style)) throw new ValidationError('Pick a design style');
+    style = i.style;
+  }
+  const pv = i.propertyValueLakh == null || (i.propertyValueLakh as unknown) === '' ? undefined : Number(i.propertyValueLakh);
+  if (pv !== undefined && !(pv >= 1 && pv <= 1_000_000)) throw new ValidationError('Property value looks wrong');
+  return { ...(i as CreateInput), style, propertyValueLakh: pv, notes: i.notes?.slice(0, 500), city: city.id, phone: sitePhone, area, drainFt: i.drainFt == null ? undefined : Math.max(0, Number(i.drainFt)) };
 }
 
 const now = () => new Date().toISOString();
@@ -68,12 +75,12 @@ export function createProject(input: CreateInput, owner: string) {
     const est = estimate({ typeId: input.typeId, city: input.city, area: input.area, tier: input.tier, drainFt: input.drainFt });
     const p: Project = {
       id: newId(), owner, createdAt: now(), status: 'visit_scheduled',
-      typeId: input.typeId, city: input.city, area: input.area, tier: input.tier, drainFt: input.drainFt, notes: input.notes,
+      typeId: input.typeId, city: input.city, area: input.area, tier: input.tier, drainFt: input.drainFt, notes: input.notes, style: input.style, propertyValueLakh: input.propertyValueLakh,
       contact: { name: input.name.trim(), phone: input.phone.trim() },
       estimate: est,
-      visit: { slot: input.slot, fee: type.visitFee, expert: visitExpert(input.city, type.needsEngineer), done: false },
+      visit: { slot: input.slot, fee: type.visitFee, expert: visitExpert(input.city, type.expert ?? (type.needsEngineer ? 'engineer' : 'mason')), done: false },
       milestones: [], paid: 0,
-      timeline: [{ at: now(), text: `Site visit booked for ${new Date(input.slot).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` }],
+      timeline: [{ at: now(), text: `${type.visitLabel} booked for ${new Date(input.slot).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` }],
     };
     all.push(p);
     return p;
@@ -106,7 +113,7 @@ export function act(id: string, a: Action, owner: string) {
       p.visit.done = true;
       p.status = 'quote_ready';
       p.quote = { total, advance: Math.round((total * ADVANCE_PCT) / 100) * 100, findings, issuedAt: now(), accepted: false };
-      log(`${p.visit.expert.name} completed the visit and issued a fixed quote of ₹${total.toLocaleString('en-IN')}`);
+      log(`${p.visit.expert.name} completed the ${getType(p.typeId)!.visitLabel.toLowerCase()} and issued a fixed quote of ₹${total.toLocaleString('en-IN')}`);
     } else if (a.action === 'accept_quote') {
       if (p.status !== 'quote_ready' || !p.quote) throw new ConflictError('No quote to accept');
       const q = p.quote;
