@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Housy — Feature deck</title>
+<style>
+:root{--bg:#faf9f6;--fg:#0f172a;--mut:#475569;--acc:#e05a2b;--card:#fff;--line:#e2e8f0}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--fg:#f1f5f9;--mut:#94a3b8;--card:#1e293b;--line:#334155}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+.slide{display:none;min-height:100vh;padding:6vh 6vw 10vh}.slide.on{display:block}
+h1{font-size:clamp(28px,5vw,52px);margin:0 0 .3em;letter-spacing:-.02em}h1 b{color:var(--acc)}h2{font-size:clamp(22px,3.4vw,34px);margin:0 0 .6em}
+p.sub{color:var(--mut);font-size:1.15em;max-width:46em}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.card h3{margin:0 0 6px;font-size:1.05em}ul{margin:0;padding-left:1.1em}li{margin:.25em 0}
+.tag{display:inline-block;border-radius:99px;padding:1px 9px;font-size:.78em;font-weight:700;margin-right:6px}
+.ok{background:#d1fae5;color:#065f46}.sim{background:#fef3c7;color:#92400e}.next{background:#dbeafe;color:#1e40af}.road{background:#e2e8f0;color:#334155}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:10px 6vw;background:var(--bg);border-top:1px solid var(--line);color:var(--mut);font-size:.9em}
+button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:10px;padding:6px 14px;font:inherit;cursor:pointer}
+</style></head><body>
+<div id="deck"></div>
+<nav><button onclick="go(-1)">← Back</button><span id="pos"></span><button onclick="go(1)">Next →</button></nav>
+<script>
+const T={ok:['ok','Built'],sim:['sim','Simulated / needs keys'],next:['next','Next'],road:['road','Roadmap']};
+const tag=k=>`<span class="tag ${T[k][0]}">${T[k][1]}</span>`;
+const card=(t,k,items)=>`<div class="card"><h3>${t} ${tag(k)}</h3><ul>${items.map(i=>`<li>${i}</li>`).join('')}</ul></div>`;
+const S=[
+`<h1>Housy — <b>Urban Company for whole projects</b></h1><p class="sub">Build, renovate and design the interiors of a home, end to end, for owners who can't be on site. Seed city: Bareilly, UP. Three portals — customer, crew/contractor, interior designer — plus an ops console, on one phone login.</p>
+ <div class="grid">${card('Customer portal','ok',['Estimate → paid visit → fixed quote','Milestones with photo proof, approve-then-pay','Chat, change orders, budget, reviews, Hindi'])}${card('Crew / contractor','sim',['Register, ops-approved, matched, accept/decline jobs','Run-the-work screens are next'])}${card('Interior designer','sim',['Register with styles and fee','Designer workflow is next'])}${card('Ops console','ok',['Approve partners, support queue, demand by city'])}</div>`,
+`<h2>The core loop</h2><div class="grid">${['1 · Pick a project, not a trade','2 · Instant phase-wise estimate','3 · Paid first visit by a verified expert','4 · Fixed quote, 20% advance','5 · Matched crews work in order; photo proof; you approve, then it pays','6 · Handover, verified reviews'].map(x=>`<div class="card">${x}</div>`).join('')}</div><p class="sub" style="margin-top:1em">Extra work is never verbal: change orders are priced first and added only when approved.</p>`,
+`<h2>Customer portal — built</h2><div class="grid">${card('Plan','ok',['10 project types: build, 7 renovations, 2 interiors','Instant estimate, tiers, safety flags','Interiors: room-by-room scope, finishes, 8–12% budget guide','Materials guide per quality tier','Home plan editor with drain run','Wall / bathroom feasibility advisor (green/amber/red)'])}${card('Run the project','ok',['Book, reschedule, cancel','Quote re-priced from on-site measurements','Milestones: photo proof, request changes ×3','Change orders, budget & expenses, CSV','Chat with text and voice notes','Issues with auto-escalation, verified reviews'])}${card('Accounts','ok',['Phone OTP, 2-step profile','20 cities, live vs coming-soon, waitlist','English + Hindi everywhere'])}</div>`,
+`<h2>Crew / contractor portal</h2><div class="grid">${card('Built','ok',['Register: city, trades, project types, day rate, team, availability','Ops verification → Housy ID','Matchmaking: rating + reviews, record, experience, rate fit, newcomer boost, load sharing','Job offers: accept / decline; decline re-offers to next best','Listed in the city directory'])}${card('Next','next',['Start work, upload photos, submit, answer change requests','Price change orders','Chat from own portal'])}${card('Roadmap','road',['Earnings and payouts','Availability calendar, service radius','WhatsApp job alerts','Physical ID card, field-agent app'])}</div>`,
+`<h2>Interior designer portal</h2><div class="grid">${card('Built','ok',['Register as designer / architect: styles, fee per sq ft'])}${card('Next','next',['Consultation workflow: brief, measurements, mood boards','Upload renders with captions for owner approval','Match by style, budget, property type'])}${card('Roadmap','road',['Portfolio','Product / artifact recommendations on a design','Design fee and revenue share'])}</div>`,
+`<h2>Ops console</h2><div class="grid">${card('Built','ok',['Partner approvals (approve / suspend, notes, masked phones)','Support queue with reply / resolve / escalations','Demand by city and latest waitlist'])}${card('Roadmap','road',['Funnel, GMV, crew utilisation analytics','Audit log','Payout and dispute tooling'])}</div>`,
+`<h2>What is real vs simulated</h2><div class="grid">${card('Real and tested','ok',['~262 automated tests, strict TypeScript, ESLint, CI','Auth, ownership isolation, validation, rate limits','Estimate, quote and money maths (always sums)','Matching and offers'])}${card('Simulated / needs keys','sim',['Payments (advance, milestone release, visit fee)','SMS delivery (demo mode shows the code)','Crew actions (demo controls on the owner page)','Rates and city multipliers are placeholders','JSON-file storage, single server'])}</div>`,
+`<h2>Roadmap</h2><div class="grid">${card('Now','next',['Crew work screens','Designer workflow + style/budget matching','Product & artifact recommendations'])}${card('Next','road',['WhatsApp + SMS notifications','Razorpay payments','Supabase database and file storage','Deployment'])}${card('Later','road',['Field-agent app + ID cards','AI advisor, photo-to-plan','Supervisor-as-a-service','Material / equipment marketplace','More live cities with calibrated rates'])}</div>`,
+`<h2>Risks</h2><div class="grid">${['Supply quality — verification is manual; needs ops tooling before scale','Unit economics — rates are placeholders; calibrate per city with real quotes','Trust without payments — approval is the mechanism, but money is simulated','Data durability — JSON files are fine for a pilot, not production'].map(x=>`<div class="card">${x}</div>`).join('')}</div><p class="sub" style="margin-top:1em">Full detail: docs/SPEC.md · docs/FEATURE_DECK.md · docs/FEATURES.md</p>`
+];
+const root=document.getElementById('deck');root.innerHTML=S.map(s=>`<section class="slide">${s}</section>`).join('');
+const el=[...root.children];let i=Math.min(el.length-1,Math.max(0,(+location.hash.slice(1)||1)-1));
+function show(){el.forEach((e,k)=>e.classList.toggle('on',k===i));document.getElementById('pos').textContent=`${i+1} / ${el.length}`;history.replaceState(null,'','#'+(i+1))}
+function go(d){i=Math.min(el.length-1,Math.max(0,i+d));show()}
+addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(1);if(e.key==='ArrowLeft')go(-1)});show();
+</script></body></html>

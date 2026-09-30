@@ -45,12 +45,14 @@ apps/web/            ← THE PRODUCT. Next.js 15 (App Router) + Tailwind 4. UI, 
 apps/backend/        legacy NestJS API (not connected) — see docs/LEGACY_BACKEND_MOBILE.md
 apps/mobile/         legacy Expo app (not connected)
 packages/shared/     shared TS types (legacy apps)
-docs/                PRODUCT_DIRECTION.md (why & decisions) · FEATURES.md (what's built / half-baked / next)
+docs/                SPEC.md (spec) · FEATURE_DECK.md + deck.html (features & roadmap) · PRODUCT_DIRECTION.md (why & decisions) · FEATURES.md (detailed inventory)
 PRD_v0.2.md, MVP_Scope_v0.2.md, wireframes_*.jpg    original product docs
 AGENTS.md            start here if you are an AI coding tool
 ```
 
 ## Read next
+- [`docs/SPEC.md`](docs/SPEC.md) — product & technical specification.
+- [`docs/FEATURE_DECK.md`](docs/FEATURE_DECK.md) — every feature with status, and the roadmap (slides: `docs/deck.html`).
 - [`docs/FEATURES.md`](docs/FEATURES.md) — exactly what works, what's simulated, what's next.
 - [`docs/PRODUCT_DIRECTION.md`](docs/PRODUCT_DIRECTION.md) — north star and the decisions taken.
 - [`AGENTS.md`](AGENTS.md) — conventions and gotchas for anyone (human or AI) changing the code.

@@ -53,7 +53,7 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | **In-app chat** with the visit expert and every assigned crew (one thread each): text (Enter sends) + **voice notes** (record in the browser, ≤ 60 s, play back), live polling every 5 s, unread badges on the thread tabs and the projects list, IST timestamps, history kept after cancellation (sending blocked) | ✅ | Voice validated by magic bytes, private to the owner, ≤ 1.5 MB; 30 messages/min throttle; 1,000 messages/project cap. **Crews have no app yet:** their side is a *demo control* (`/chat/crew`, disabled in production unless `HOUSY_DEV_OTP=1`); real replies would arrive via a WhatsApp bridge (not built). No push notifications |
 | Ownership isolation (other users get 404) | ✅ | |
 | Crew directory per city, filter by trade, real ratings + recent reviews | ✅ | |
-| **Verified reviews**: owner of a *completed* project rates each person who worked on it (4 criteria, 1–5, optional text), once each; reviewer shown masked ("Asha K."); real ratings blend into the seed baseline | ✅ | Crew *assignment* still ranks on the seed rating, not live reviews |
+| **Verified reviews**: owner of a *completed* project rates each person who worked on it (4 criteria, 1–5, optional text), once each; reviewer shown masked ("Asha K."); real ratings blend into the seed baseline | ✅ | |
 | Crew/expert real apps (today: "Demo control" buttons on the owner's page) | 🟡 | The biggest simulation left |
 | Real payments (Razorpay: visit fee, advance, milestone release) | 🟡 | Needs keys |
 | Notifications (SMS/WhatsApp on booking, quote, submission) | ⬜ | |
