@@ -28,6 +28,11 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | **Rates, city multipliers, timelines** | 🟡 | **Placeholders** (Bareilly baseline). Need real quotes to calibrate |
 | Structural work always includes engineer/architect phase | ✅ | |
 
+## 3b. Feasibility advisor (`/advisor`)
+| "Can I break this wall?" → green/amber/red with reasons, next steps, and a link into an engineer-led project | ✅ | Deterministic rules, **not AI**. Safety-first: any "not sure" answer can never be green; exterior/thick/load-bearing masonry walls are red. Tested exhaustively over all 5,832 answer combinations |
+| "Can I add a bathroom?" → drain fall at 1:40, floor, leak risk, ventilation; cost range from the estimator; carries the drain distance into the plan | ✅ | |
+| AI (Gemini) advisor / freeform chat | ⬜ | Needs an API key; exists only in the legacy backend |
+
 ## 4. Project lifecycle (the core loop)
 | Book paid first visit (site visit / design consultation / plot visit), pick slot, on-site contact | ✅ | Fee shown but **not charged** |
 | Expert visit → real measurements re-price the fixed quote, findings + expert note | ✅ | Done via a *demo control* on the project page (no expert app yet) |
@@ -51,13 +56,13 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | Clean-clone install & build | ✅ | Fixed a broken lockfile this pass |
 
 ## 6. Not started (from the PRD)
-AI advisor in the web app (bathroom/wall feasibility, freeform chat — exists only in legacy backend) · floor-plan wizard/scan (legacy mobile) ·
+Freeform AI chat (legacy backend only) · floor-plan wizard/scan (legacy mobile) ·
 in-app chat · expense/photo journal beyond milestones · 
 supervisor-as-a-service · equipment & material marketplace · education content · field-agent app & Housy ID cards · issue/dispute flow · NRI-specific features.
 
 ## Suggested next order
 1. ~~Interiors depth~~ — done.
 2. ~~Reviews & ratings~~ — done. Issue/dispute flow next.
-3. Rule-based feasibility advisor (wall safety G/A/R, bathroom feasibility) in the plan flow — works without AI keys.
+3. ~~Rule-based feasibility advisor~~ — done.
 4. AI advisor (port from legacy backend, needs Gemini key) feeding intake & quote findings.
 5. Supabase storage (deferred by choice), real expert/crew app, payments, notifications (need keys/accounts).
