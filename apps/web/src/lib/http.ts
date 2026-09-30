@@ -4,6 +4,7 @@ import { SmsUnavailableError } from './sms';
 import { ConflictError, NotFoundError, ValidationError } from './projects';
 import { NoCoverageError } from './pros';
 import { ProfileError } from './profile';
+import { RateLimitedError } from './chat';
 import { PlanError } from './plan-shared';
 
 export class PayloadTooLargeError extends Error {}
@@ -38,6 +39,7 @@ export function errorResponse(e: unknown): NextResponse {
     e instanceof NotFoundError ? 404 :
     e instanceof ConflictError || e instanceof NoCoverageError ? 409 :
     e instanceof PayloadTooLargeError ? 413 :
+    e instanceof RateLimitedError ? 429 :
     e instanceof SmsUnavailableError ? 503 : 0;
   if (!status) throw e;
   return NextResponse.json({ error: (e as Error).message }, { status });

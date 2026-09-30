@@ -15,7 +15,7 @@ const STATUS = { visit_scheduled: 'Visit scheduled', quote_ready: 'Quote ready',
 export default function Projects() {
   const { user } = useAuth();
   const { lang } = useT();
-  const [projects, setProjects] = useState<Project[] | null>(null);
+  const [projects, setProjects] = useState<(Project & { unreadChat?: number })[] | null>(null);
   const [err, setErr] = useState('');
   const [tick, setTick] = useState(0);
 
@@ -60,6 +60,7 @@ export default function Projects() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-[#E05A2B]">{STATUS[p.status]}</p>
+                    {!!p.unreadChat && <p className="mt-0.5 inline-block rounded-full bg-[#E05A2B] px-2 py-0.5 text-xs font-bold text-white" aria-label={`${p.unreadChat} unread messages`}>💬 {p.unreadChat}</p>}
                     <p className="text-sm text-slate-600">{inr(p.quote?.total ?? p.estimate.total)}</p>
                   </div>
                 </Link>

@@ -45,3 +45,43 @@ export function decodeDataUrl(dataUrl: unknown): { buf: Buffer; ext: ImageExt } 
   if (!ext) throw new Error('That file is not a valid image');
   return { buf, ext };
 }
+
+// ── Voice notes (chat) ───────────────────────────────────────────────
+export const MAX_AUDIO_BYTES = 1_500_000;                       // ~60 s of speech at browser recorder bitrates, with headroom
+export type AudioExt = 'webm' | 'ogg' | 'm4a' | 'mp3' | 'wav';
+export const AUDIO_MIME: Record<AudioExt, string> = { webm: 'audio/webm', ogg: 'audio/ogg', m4a: 'audio/mp4', mp3: 'audio/mpeg', wav: 'audio/wav' };
+
+// By magic bytes only: what MediaRecorder produces (WebM/Ogg on Chrome & Firefox, MP4 on Safari) plus common uploads.
+export function sniffAudio(b: Buffer): AudioExt | null {
+  if (b.length < 16) return null;
+  if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return 'webm';
+  if (b.subarray(0, 4).toString('latin1') === 'OggS') return 'ogg';
+  if (b.subarray(4, 8).toString('latin1') === 'ftyp') return 'm4a';
+  if (b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WAVE') return 'wav';
+  if (b.subarray(0, 3).toString('latin1') === 'ID3' || (b[0] === 0xff && (b[1] & 0xe0) === 0xe0)) return 'mp3';
+  return null;
+}
+
+export function decodeAudioDataUrl(dataUrl: unknown): { buf: Buffer; ext: AudioExt } {
+  if (typeof dataUrl !== 'string') throw new Error('No voice note provided');
+  const m = /^data:audio\/[a-z0-9.+-]+(?:;[^;,]*)*;base64,([A-Za-z0-9+/=]+)$/i.exec(dataUrl);
+  if (!m) throw new Error('That is not a voice recording');
+  if (m[1].length > Math.ceil((MAX_AUDIO_BYTES * 4) / 3) + 4) throw new Error('Voice note is too long');
+  const buf = Buffer.from(m[1], 'base64');
+  if (buf.length > MAX_AUDIO_BYTES) throw new Error('Voice note is too long');
+  const ext = sniffAudio(buf);
+  if (!ext) throw new Error('That file is not a valid voice recording');
+  return { buf, ext };
+}
+
+export async function saveAudio(projectId: string, buf: Buffer, ext: AudioExt): Promise<string> {
+  const id = randomUUID();
+  await fs.mkdir(dir(projectId), { recursive: true });
+  await fs.writeFile(path.join(dir(projectId), `chat-${id}.${ext}`), buf);
+  return id;
+}
+
+export async function readAudio(projectId: string, id: string, ext: AudioExt): Promise<Buffer | null> {
+  if (!SAFE.test(id) || !(ext in AUDIO_MIME)) return null;
+  try { return await fs.readFile(path.join(dir(projectId), `chat-${id}.${ext}`)); } catch { return null; }
+}

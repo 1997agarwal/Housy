@@ -20,6 +20,7 @@ Full rationale: `docs/PRODUCT_DIRECTION.md`. Current status: `docs/FEATURES.md`.
 - `src/lib/reviews.ts` (+ `reviews-shared.ts`) — verified reviews; only the owner of a *completed* project, once per person; phone never leaves the server.
 - `src/lib/issues.ts` (+ `issues-shared.ts`) — problems & support threads, ops actions, 48 h escalation (computed, not stored).
 - `src/lib/plan.ts` / `plan-shared.ts` — home plan storage / pure geometry (overlap, drain run, interiors mapping, validation).
+- `src/lib/chat.ts` (+ `chat-shared.ts`) — owner↔expert/crew threads, voice notes (`uploads.ts` audio), read cursors, unread counts. Crew-side sending exists only as the demo route `api/.../chat/crew` (gated by `lib/demo.ts`); never expose it in production.
 - `src/lib/limits.ts` — browser-safe constants shared by UI and server (photo caps, revisions, change-order trades).
 - `src/lib/http.ts` — the single domain-error → HTTP status map. Add new error classes there.
 - `src/app/api/**` — thin route handlers: `requireSession()` → call lib → `errorResponse(e)`.
@@ -38,7 +39,8 @@ Full rationale: `docs/PRODUCT_DIRECTION.md`. Current status: `docs/FEATURES.md`.
 11. **Untrusted input** (all request bodies): read with `readBody(req)` (size-capped, must be a JSON object — never `req.json()`); parse numbers with `toNum()` from `lib/num.ts` (never `Number(x)`: `Number([50])` is 50 and `Number(true)` is 1); check `typeof` before calling string methods; validation errors must be `ValidationError` (→ 400), never a thrown `TypeError` (→ 500). Reads from the JSON store must fail loudly on anything but "file missing" (`kv.ts`) — never fall back to an empty store on error, or the next write erases everything.
 12. **Time**: everything users book or log is Indian time. Use `lib/time.ts` (`visitSlots`, `todayIST`, `formatIST`); never `new Date().toISOString().slice(0,10)` or `setHours(10)` for user-facing dates — they use the viewer's zone or UTC and are wrong for an owner abroad or after midnight IST.
 13. **Client forms**: an action that fails must not clear what the user typed. `send()` on the project page resolves `true` only on success; clear inputs only then.
-14. Adding a project type = add to `PROJECT_TYPES` **and** make sure every live city has crew for each phase trade + the first-visit expert (`catalog.test.ts` enforces this) **and** give it Hindi copy (`messages.test.ts` enforces this).
+14. **Demo-only endpoints** (anything that lets the owner act as the crew/expert) must check `isDemoMode()` from `lib/demo.ts` and 404 otherwise.
+15. Adding a project type = add to `PROJECT_TYPES` **and** make sure every live city has crew for each phase trade + the first-visit expert (`catalog.test.ts` enforces this) **and** give it Hindi copy (`messages.test.ts` enforces this).
 
 ## Commands (run from `apps/web`)
 `npm test` · `npm run typecheck` · `npm run lint` · `npm run build` · `npm run dev`

@@ -50,6 +50,7 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 | **Problems & support**: owner reports quality / stoppage / material / design / payment issues (optionally tied to a step), threads with Housy, marks resolved or reopens; unresolved > 48 h auto-escalate; ops queue in `/admin` (reply/resolve) | ✅ | Max 5 open per project. No push notification when Housy replies (owner must open the page) |
 | **Change orders**: the "fixed price" promise made real — owner requests extra work, expert prices it, owner approves → new milestone + quote total rise together; a pending change holds the project open | ✅ | Expert pricing is a demo control |
 | **Budget & expenses**: your own budget vs where the project is heading (quote + your outside spending), 90 % warning / over-budget, category breakdown, ledger with delete, CSV export (formula-injection safe) | ✅ | Housy payments are tracked automatically; outside expenses are manual |
+| **In-app chat** with the visit expert and every assigned crew (one thread each): text (Enter sends) + **voice notes** (record in the browser, ≤ 60 s, play back), live polling every 5 s, unread badges on the thread tabs and the projects list, IST timestamps, history kept after cancellation (sending blocked) | ✅ | Voice validated by magic bytes, private to the owner, ≤ 1.5 MB; 30 messages/min throttle; 1,000 messages/project cap. **Crews have no app yet:** their side is a *demo control* (`/chat/crew`, disabled in production unless `HOUSY_DEV_OTP=1`); real replies would arrive via a WhatsApp bridge (not built). No push notifications; the voice-note preview on thread tabs stays English in Hindi mode |
 | Ownership isolation (other users get 404) | ✅ | |
 | Crew directory per city, filter by trade, real ratings + recent reviews | ✅ | |
 | **Verified reviews**: owner of a *completed* project rates each person who worked on it (4 criteria, 1–5, optional text), once each; reviewer shown masked ("Asha K."); real ratings blend into the seed baseline | ✅ | Crew *assignment* still ranks on the seed rating, not live reviews |
@@ -71,12 +72,12 @@ Legend: ✅ built & tested · 🟡 built but simulated / needs keys or real data
 
 ## 6. Not started (from the PRD)
 Freeform AI chat (legacy backend only) · photo-to-floor-plan AI scan (legacy mobile) ·
-in-app chat · photo journal beyond milestones · 
+ photo journal beyond milestones · 
 supervisor-as-a-service · equipment & material marketplace · education content · field-agent app & Housy ID cards ·  NRI-specific features.
 
 ## Suggested next order
 1. ~~Interiors depth~~ — done.
-2. ~~Reviews & ratings~~, ~~issue/dispute flow~~ — done.
+2. ~~Reviews & ratings~~, ~~issue/dispute flow~~, ~~in-app chat~~ — done.
 3. ~~Rule-based feasibility advisor~~ — done.
 4. AI advisor (port from legacy backend, needs Gemini key) feeding intake & quote findings.
 5. Supabase storage (deferred by choice), real expert/crew app, payments, notifications (need keys/accounts).

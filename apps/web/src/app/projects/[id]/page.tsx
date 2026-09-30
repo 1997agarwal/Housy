@@ -15,6 +15,7 @@ import { ReviewPanel } from '@/lib/ReviewPanel';
 import { IssuePanel } from '@/lib/IssuePanel';
 import { ChangePanel } from '@/lib/ChangePanel';
 import { ExpensePanel } from '@/lib/ExpensePanel';
+import { ChatPanel } from '@/lib/ChatPanel';
 import { MAX_PHOTOS_PER_MILESTONE, MAX_REVISIONS } from '@/lib/limits';
 
 const STAGE_IDX = { visit_scheduled: 0, quote_ready: 1, active: 2, completed: 3, cancelled: -1 } as const;
@@ -156,6 +157,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               {p.status === 'quote_ready' && <button className="ml-3 mt-4 text-sm font-bold text-red-700 hover:underline" disabled={busy} onClick={cancel}>Decline & cancel</button>}
             </section>
           )}
+
+          <ChatPanel projectId={p.id} cancelled={cancelled} />
 
           {(p.status === 'active' || p.status === 'completed') && <ExpensePanel p={p} send={send} busy={busy} />}
 

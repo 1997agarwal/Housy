@@ -60,6 +60,11 @@ export const en = {
   'plan.notPresent': 'You do not need to be present — share a contact who can open the door.',
   'plan.feeNote': 'Fee is adjusted against your project if you go ahead. (Payment gateway not connected in this build.)',
   'tier.economy': 'Economy', 'tier.economy.d': 'Basic fittings, functional finish', 'tier.standard': 'Standard', 'tier.standard.d': 'Branded fittings, good finish', 'tier.premium': 'Premium', 'tier.premium.d': 'Premium brands, designer finish',
+  'chat.title': 'Messages', 'chat.sub': 'Talk to your expert and crews. They get your messages on WhatsApp.', 'chat.none': 'Nobody to chat with yet.', 'chat.empty': 'No messages yet — say hello 👋',
+  'chat.write': 'Write a message…', 'chat.send': 'Send', 'chat.sending': 'Sending…', 'chat.voice': 'Voice note', 'chat.record': 'Record voice note', 'chat.stop': 'Stop', 'chat.recording': 'Recording… {s}s (max {max}s)',
+  'chat.discard': 'Discard', 'chat.sendVoice': 'Send voice note', 'chat.noMic': 'Voice notes are not supported in this browser.', 'chat.micDenied': 'Microphone access was blocked. Allow it in your browser settings to send voice notes.',
+  'chat.you': 'You', 'chat.unread': '{n} new', 'chat.cancelled': 'This project was cancelled, so new messages are turned off.', 'chat.demo': 'Demo control · crew app', 'chat.demoHint': 'Crews reply from WhatsApp in production. Here you can play their side.', 'chat.asCrew': 'Send as {name}',
+  'chat.tooFast': 'You are sending messages too fast — please wait a moment.',
   'visit.site': 'site visit', 'visit.design': 'design consultation', 'visit.plot': 'plot visit',
 } as const;
 export type Key = keyof typeof en;
@@ -122,6 +127,11 @@ export const hi: Record<Key, string> = {
   'plan.notPresent': 'आपका मौजूद रहना ज़रूरी नहीं — कोई ऐसा संपर्क दीजिए जो दरवाज़ा खोल सके।',
   'plan.feeNote': 'आगे बढ़ने पर यह फ़ीस आपके प्रोजेक्ट में समायोजित हो जाती है। (इस वर्ज़न में पेमेंट गेटवे जुड़ा नहीं है।)',
   'tier.economy': 'इकोनॉमी', 'tier.economy.d': 'सामान्य फ़िटिंग, काम चलाऊ फ़िनिश', 'tier.standard': 'स्टैंडर्ड', 'tier.standard.d': 'ब्रांडेड फ़िटिंग, अच्छी फ़िनिश', 'tier.premium': 'प्रीमियम', 'tier.premium.d': 'प्रीमियम ब्रांड, डिज़ाइनर फ़िनिश',
+  'chat.title': 'संदेश', 'chat.sub': 'अपने एक्सपर्ट और टीम से बात करें। उन्हें आपके संदेश WhatsApp पर मिलते हैं।', 'chat.none': 'अभी बात करने के लिए कोई नहीं है।', 'chat.empty': 'अभी कोई संदेश नहीं — नमस्ते कहिए 👋',
+  'chat.write': 'संदेश लिखें…', 'chat.send': 'भेजें', 'chat.sending': 'भेजा जा रहा है…', 'chat.voice': 'वॉइस नोट', 'chat.record': 'वॉइस नोट रिकॉर्ड करें', 'chat.stop': 'रोकें', 'chat.recording': 'रिकॉर्डिंग… {s} सेकंड (अधिकतम {max})',
+  'chat.discard': 'हटाएँ', 'chat.sendVoice': 'वॉइस नोट भेजें', 'chat.noMic': 'इस ब्राउज़र में वॉइस नोट काम नहीं करते।', 'chat.micDenied': 'माइक्रोफ़ोन की अनुमति बंद है। वॉइस नोट भेजने के लिए ब्राउज़र सेटिंग में अनुमति दें।',
+  'chat.you': 'आप', 'chat.unread': '{n} नए', 'chat.cancelled': 'यह प्रोजेक्ट रद्द हो चुका है, इसलिए नए संदेश बंद हैं।', 'chat.demo': 'डेमो कंट्रोल · क्रू ऐप', 'chat.demoHint': 'असली इस्तेमाल में टीम WhatsApp से जवाब देती है। यहाँ आप उनकी तरफ़ से लिखकर देख सकते हैं।', 'chat.asCrew': '{name} की ओर से भेजें',
+  'chat.tooFast': 'आप बहुत तेज़ी से संदेश भेज रहे हैं — कृपया थोड़ा रुकें।',
   'visit.site': 'साइट विज़िट', 'visit.design': 'डिज़ाइन कंसल्टेशन', 'visit.plot': 'प्लॉट विज़िट',
 };
 
